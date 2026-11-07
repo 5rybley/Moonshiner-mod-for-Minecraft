@@ -13,6 +13,8 @@ Drinks are not crafted here: you carry them through the whole process, and every
 | **Mod ID** | `samogon` |
 | **License** | MIT |
 
+> Русская версия: [README.ru.md](README.ru.md)
+
 ## Features
 
 - **Nine production stages** — mash tun, fermentation barrel, pot still with heads/hearts/tails cuts, rectification column, charcoal filter, dilution basin, five-slot blending table, aging barrel and an open moonshine crate for four bottles.
