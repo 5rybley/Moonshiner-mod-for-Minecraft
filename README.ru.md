@@ -236,5 +236,5 @@ $env:JAVA_HOME='C:\Users\administrator\AppData\Roaming\.minecraft\runtime\java-r
 
 ## Авторы
 
-- **5_Rybley** - идея, дизайн, арт-дирекшн, тестирование.
-- **DeepSeek** - код, модели, текстуры, документация.
+- **5_Rybley**
+- **DeepSeek** 
