@@ -21,7 +21,7 @@ Drinks are not crafted here: you carry them through the whole process, and every
 - **Process physics instead of a progress bar** - boiling point of the ethanol–water mix, vapour enrichment, approach to the azeotrope, fermentation temperature, mandatory water cooling, mass balance.
 - **Data carried in the item** - strength, quality, impurities, origin, number of distillations, filtration, age and blend composition survive every transfer and are stored in the bottle.
 - **Procedural spirits** - 26 additives, up to five per blend, 192 name/aroma variants; the same set always yields the same drink.
-- **Intoxication I-V** with nausea, vomiting (IV–V), staggering, drunken resilience, drunken strike, arrow deflection and four infusion types.
+- **Intoxication I-V** with nausea, vomiting (IV-V), staggering, drunken resilience, drunken strike, arrow deflection and four infusion types.
 - **Eight working machines and a decorative condenser**, 32 items with original voxel models, parchment-and-oak GUI panels, an illustrated ten-chapter in-game guide.
 - **Russian and English** localization.
 
