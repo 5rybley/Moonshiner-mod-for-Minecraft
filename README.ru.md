@@ -233,3 +233,22 @@ $env:JAVA_HOME='C:\Users\administrator\AppData\Roaming\.minecraft\runtime\java-r
 Этанол огнеопасен, а токсичные примеси действительно опасны. В реальности самогоноварение требует вентиляции, контроля давления, разделения фракций и соблюдения местных законов. Механика мода сознательно упрощена и **не должна повторяться в реальной жизни**. Головы и хвосты в игре - технические жидкости с тяжёлыми дебаффами, а не безопасный напиток; в реальности их не пьют.
 
 присоединяйтесь в наш дискорд: https://discord.gg/86gYzRSyd
+
+## Источники
+
+- NeoForge Docs 1.21.1: https://docs.neoforged.net/docs/1.21.1/gettingstarted/
+- Distillation: https://en.wikipedia.org/wiki/Distillation
+- Fractional distillation: https://en.wikipedia.org/wiki/Fractional_distillation
+- Ethanol fermentation: https://en.wikipedia.org/wiki/Ethanol_fermentation
+- Pot still: https://en.wikipedia.org/wiki/Pot_still
+- Pot stills, Wikimedia Commons: https://commons.wikimedia.org/wiki/Category:Pot_stills
+- Moonshiner: https://en.wikipedia.org/wiki/Moonshiner
+- Ethanol: https://en.wikipedia.org/wiki/Ethanol
+- Maceration: https://en.wikipedia.org/wiki/Maceration_(cooking)
+- Самогонные аппараты периодического действия: https://ru.wikipedia.org/wiki/Самогонные_аппараты_периодического_действия
+- Distilling cuts reference (visual research only): https://diydistilling.com/how-to-make-cuts-when-distilling/
+
+## Авторы
+
+- **5_Rybley** - идея, дизайн, арт-дирекшн, тестирование.
+- **DeepSeek** - код, модели, текстуры, документация.
