@@ -1,0 +1,1 @@
+{"parent":"samogon:root","display":{"icon":{"id":"samogon:samogon_crate"},"title":{"translate":"advancement.samogon.first_crate.title"},"description":{"translate":"advancement.samogon.first_crate.description"},"frame":"task"},"criteria":{"got_item":{"trigger":"minecraft:inventory_changed","conditions":{"items":[{"items":"samogon:samogon_crate"}]}}}}

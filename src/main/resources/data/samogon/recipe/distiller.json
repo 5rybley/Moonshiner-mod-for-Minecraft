@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["ABA","CDC","EEE"],"key":{"A":{"item":"minecraft:copper_ingot"},"B":{"item":"samogon:condenser"},"C":{"item":"minecraft:iron_ingot"},"D":{"item":"minecraft:cauldron"},"E":{"item":"minecraft:stone"}},"result":{"id":"samogon:distiller","count":1}}

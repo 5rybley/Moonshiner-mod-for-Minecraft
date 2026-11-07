@@ -1,0 +1,1 @@
+{"parent":"samogon:first_still","display":{"icon":{"id":"samogon:hearts_fraction"},"title":{"translate":"advancement.samogon.first_hearts.title"},"description":{"translate":"advancement.samogon.first_hearts.description"},"frame":"goal"},"criteria":{"got_item":{"trigger":"minecraft:inventory_changed","conditions":{"items":[{"items":"samogon:hearts_fraction"}]}}}}

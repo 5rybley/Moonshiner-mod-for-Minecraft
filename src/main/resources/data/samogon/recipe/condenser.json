@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":[" A ","BBB"," A "],"key":{"A":{"item":"minecraft:copper_ingot"},"B":{"item":"minecraft:iron_ingot"}},"result":{"id":"samogon:condenser","count":1}}

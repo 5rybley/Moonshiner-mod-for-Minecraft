@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["AAA"," B ","CCC"],"key":{"A":{"item":"minecraft:oak_planks"},"B":{"item":"minecraft:crafting_table"},"C":{"item":"minecraft:copper_ingot"}},"result":{"id":"samogon:blending_table","count":1}}

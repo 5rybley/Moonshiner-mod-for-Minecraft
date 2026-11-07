@@ -1,0 +1,184 @@
+{
+  "credit": "Original voxel geometry and pixel textures for Moonshiner; open-top crate assembled from the project material atlas.",
+  "parent": "minecraft:block/block",
+  "texture_size": [16, 16],
+  "textures": {
+    "particle": "#oak",
+    "oak": "samogon:block/materials/oak",
+    "oak_light": "samogon:block/materials/oak_light",
+    "dark_wood": "samogon:block/materials/dark_wood"
+  },
+  "elements": [
+    {
+      "from": [0.0, 0.0, 0.0],
+      "to": [16.0, 2.0, 16.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"}
+      }
+    },
+    {
+      "from": [2.0, 2.0, 0.0],
+      "to": [14.0, 12.0, 2.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#oak"}
+      }
+    },
+    {
+      "from": [2.0, 2.0, 14.0],
+      "to": [14.0, 12.0, 16.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#oak"}
+      }
+    },
+    {
+      "from": [0.0, 2.0, 2.0],
+      "to": [2.0, 12.0, 14.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#oak"}
+      }
+    },
+    {
+      "from": [14.0, 2.0, 2.0],
+      "to": [16.0, 12.0, 14.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#oak"}
+      }
+    },
+    {
+      "from": [0.0, 2.0, 0.0],
+      "to": [2.0, 16.0, 2.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#oak"}
+      }
+    },
+    {
+      "from": [14.0, 2.0, 0.0],
+      "to": [16.0, 16.0, 2.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#oak_light"}
+      }
+    },
+    {
+      "from": [0.0, 2.0, 14.0],
+      "to": [2.0, 16.0, 16.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#oak"}
+      }
+    },
+    {
+      "from": [14.0, 2.0, 14.0],
+      "to": [16.0, 16.0, 16.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#oak_light"}
+      }
+    },
+    {
+      "from": [2.0, 12.0, 0.0],
+      "to": [14.0, 13.0, 2.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"}
+      }
+    },
+    {
+      "from": [2.0, 12.0, 14.0],
+      "to": [14.0, 13.0, 16.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"}
+      }
+    },
+    {
+      "from": [0.0, 12.0, 2.0],
+      "to": [2.0, 13.0, 14.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"}
+      }
+    },
+    {
+      "from": [14.0, 12.0, 2.0],
+      "to": [16.0, 13.0, 14.0],
+      "faces": {
+        "down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"}
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [25, -135, 0],
+      "scale": [0.78, 0.78, 0.78]
+    },
+    "ground": {
+      "rotation": [0, 0, 0],
+      "translation": [0, 3, 0],
+      "scale": [0.25, 0.25, 0.25]
+    },
+    "fixed": {
+      "rotation": [0, 180, 0],
+      "scale": [0.5, 0.5, 0.5]
+    }
+  }
+}

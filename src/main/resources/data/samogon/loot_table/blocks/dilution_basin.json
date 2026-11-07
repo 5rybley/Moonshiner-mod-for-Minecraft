@@ -1,0 +1,1 @@
+{"type":"minecraft:block","random_sequence":"samogon:blocks/dilution_basin","pools":[{"rolls":1,"bonus_rolls":0,"entries":[{"type":"minecraft:item","name":"samogon:dilution_basin"}],"conditions":[{"condition":"minecraft:survives_explosion"}]}]}

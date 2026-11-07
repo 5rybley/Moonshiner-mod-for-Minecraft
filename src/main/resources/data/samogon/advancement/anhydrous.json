@@ -1,0 +1,1 @@
+{"parent":"samogon:first_neutral","display":{"icon":{"id":"samogon:molecular_sieve"},"title":{"translate":"advancement.samogon.anhydrous.title"},"description":{"translate":"advancement.samogon.anhydrous.description"},"frame":"challenge"},"criteria":{"got_item":{"trigger":"minecraft:inventory_changed","conditions":{"items":[{"items":"samogon:anhydrous_spirit"}]}}}}

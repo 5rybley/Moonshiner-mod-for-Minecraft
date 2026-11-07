@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["ABA","BCB","ABA"],"key":{"A":{"item":"minecraft:oak_planks"},"B":{"item":"minecraft:iron_nugget"},"C":{"item":"minecraft:barrel"}},"result":{"id":"samogon:fermentation_barrel","count":1}}

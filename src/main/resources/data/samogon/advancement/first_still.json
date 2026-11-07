@@ -1,0 +1,1 @@
+{"parent":"samogon:first_ferment","display":{"icon":{"id":"samogon:distiller"},"title":{"translate":"advancement.samogon.first_still.title"},"description":{"translate":"advancement.samogon.first_still.description"},"frame":"task"},"criteria":{"got_item":{"trigger":"minecraft:inventory_changed","conditions":{"items":[{"items":"samogon:distiller"}]}}}}

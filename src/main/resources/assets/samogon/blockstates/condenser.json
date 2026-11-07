@@ -1,0 +1,1 @@
+{"variants":{"facing=north":{"model":"samogon:block/condenser"},"facing=east":{"model":"samogon:block/condenser","y":90},"facing=south":{"model":"samogon:block/condenser","y":180},"facing=west":{"model":"samogon:block/condenser","y":270}}}

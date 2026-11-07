@@ -1,0 +1,1 @@
+{"parent":"samogon:first_dilution","display":{"icon":{"id":"samogon:oak_aged_spirit"},"title":{"translate":"advancement.samogon.oak_aged.title"},"description":{"translate":"advancement.samogon.oak_aged.description"},"frame":"challenge"},"criteria":{"got_item":{"trigger":"minecraft:inventory_changed","conditions":{"items":[{"items":"samogon:oak_aged_spirit"}]}}}}

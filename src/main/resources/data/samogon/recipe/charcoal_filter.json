@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["ABA","BCB","ABA"],"key":{"A":{"item":"minecraft:iron_ingot"},"B":{"item":"samogon:activated_charcoal"},"C":{"item":"minecraft:glass_bottle"}},"result":{"id":"samogon:charcoal_filter","count":1}}

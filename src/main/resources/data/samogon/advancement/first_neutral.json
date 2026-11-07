@@ -1,0 +1,1 @@
+{"parent":"samogon:first_filter","display":{"icon":{"id":"samogon:reflux_column"},"title":{"translate":"advancement.samogon.first_neutral.title"},"description":{"translate":"advancement.samogon.first_neutral.description"},"frame":"goal"},"criteria":{"got_item":{"trigger":"minecraft:inventory_changed","conditions":{"items":[{"items":"samogon:neutral_spirit"}]}}}}

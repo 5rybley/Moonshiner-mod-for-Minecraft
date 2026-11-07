@@ -1,0 +1,1 @@
+{"parent":"samogon:first_mash","display":{"icon":{"id":"samogon:yeast"},"title":{"translate":"advancement.samogon.first_ferment.title"},"description":{"translate":"advancement.samogon.first_ferment.description"},"frame":"task"},"criteria":{"got_item":{"trigger":"minecraft:inventory_changed","conditions":{"items":[{"items":"samogon:fermented_mash"}]}}}}

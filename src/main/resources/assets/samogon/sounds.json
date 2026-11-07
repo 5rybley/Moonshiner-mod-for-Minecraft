@@ -1,0 +1,20 @@
+{
+  "drink_swig": {
+    "subtitle": "subtitles.samogon.drink_swig",
+    "sounds": [
+      { "name": "samogon:drink_swig" }
+    ]
+  },
+  "still_bubble": {
+    "subtitle": "subtitles.samogon.still_bubble",
+    "sounds": [
+      { "name": "samogon:still_bubble" }
+    ]
+  },
+  "cure_glug": {
+    "subtitle": "subtitles.samogon.cure_glug",
+    "sounds": [
+      { "name": "samogon:cure_glug" }
+    ]
+  }
+}

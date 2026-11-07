@@ -1,0 +1,1 @@
+{"parent":"samogon:first_hearts","display":{"icon":{"id":"samogon:dilution_basin"},"title":{"translate":"advancement.samogon.first_dilution.title"},"description":{"translate":"advancement.samogon.first_dilution.description"},"frame":"task"},"criteria":{"got_item":{"trigger":"minecraft:inventory_changed","conditions":{"items":[{"items":"samogon:diluted_spirit"}]}}}}

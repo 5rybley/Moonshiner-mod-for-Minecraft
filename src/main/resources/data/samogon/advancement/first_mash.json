@@ -1,0 +1,1 @@
+{"parent":"samogon:root","display":{"icon":{"id":"samogon:malt"},"title":{"translate":"advancement.samogon.first_mash.title"},"description":{"translate":"advancement.samogon.first_mash.description"},"frame":"task"},"criteria":{"got_item":{"trigger":"minecraft:inventory_changed","conditions":{"items":[{"items":"samogon:sweet_wort"}]}}}}

@@ -1,0 +1,1 @@
+{"parent":"samogon:first_dilution","display":{"icon":{"id":"samogon:artisan_samogon"},"title":{"translate":"advancement.samogon.first_blend.title"},"description":{"translate":"advancement.samogon.first_blend.description"},"frame":"goal"},"criteria":{"got_item":{"trigger":"minecraft:inventory_changed","conditions":{"items":[{"items":"samogon:artisan_samogon"}]}}}}

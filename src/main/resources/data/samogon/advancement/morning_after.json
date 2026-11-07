@@ -1,0 +1,1 @@
+{"parent":"samogon:level_v","display":{"icon":{"id":"samogon:brine"},"title":{"translate":"advancement.samogon.morning_after.title"},"description":{"translate":"advancement.samogon.morning_after.description"},"frame":"goal"},"criteria":{"hangover":{"trigger":"minecraft:effects_changed","conditions":{"effects":{"samogon:hangover":{}}}}}}

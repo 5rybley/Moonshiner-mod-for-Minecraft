@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["ABA","BCB","ABA"],"key":{"A":{"item":"minecraft:clay_ball"},"B":{"item":"minecraft:quartz"},"C":{"item":"minecraft:iron_ingot"}},"result":{"id":"samogon:molecular_sieve","count":1}}

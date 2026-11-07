@@ -1,0 +1,1 @@
+{"parent":"samogon:first_drink","display":{"icon":{"id":"samogon:heads_fraction"},"title":{"translate":"advancement.samogon.level_v.title"},"description":{"translate":"advancement.samogon.level_v.description"},"frame":"challenge"},"criteria":{"drunk":{"trigger":"minecraft:effects_changed","conditions":{"effects":{"samogon:intoxication":{"amplifier":{"min":4}}}}}}}

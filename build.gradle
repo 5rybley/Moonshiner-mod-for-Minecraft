@@ -1,0 +1,66 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.91'
+}
+
+version = mod_version
+group = mod_group_id
+// Artifact file name is derived from the display name (spaces/symbols -> dashes),
+// so the jar reads e.g. "moonshiner-0.0.1-beta.jar" while the mod metadata
+// keeps mod_version with its space ("0.0.1 beta").
+def modArchiveName = mod_name.toLowerCase().replaceAll('[^a-z0-9]+', '-').replaceAll(/^-|-$/, '')
+base { archivesName = modArchiveName }
+tasks.named('jar') { archiveVersion = mod_version.replace(' ', '-') }
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories { mavenLocal() }
+
+neoForge {
+    version = project.neo_version
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+    runs {
+        client { client() }
+        server { server(); programArgument '--nogui' }
+        gameTestServer {
+            type = 'gameTestServer'
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'samogon'
+        }
+    }
+    mods { samogon { sourceSet(sourceSets.main) } }
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.withType(ProcessResources).configureEach { filteringCharset = 'UTF-8' }
+
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    def props = ['minecraft_version_range', 'neo_version_range', 'loader_version_range',
+                 'mod_id', 'mod_name', 'mod_license', 'mod_version', 'mod_authors', 'mod_description']
+            .collectEntries { [(it): project.property(it)] }
+    inputs.properties props
+    expand props
+    from 'src/main/templates'
+    into 'build/generated/modMetadata'
+    filteringCharset = 'UTF-8'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.register('verifySimulation', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'ru.samogon.process.SimulationTest'
+}
+tasks.register('verifyChains', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'ru.samogon.process.ProductionChainTest'
+}
+tasks.register('verifyAssets', Exec) {
+    workingDir projectDir
+    commandLine javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }.get().executablePath.asFile,
+            'tools/VerifyAssets.java'
+}
+tasks.named('check') { dependsOn 'verifySimulation', 'verifyChains', 'verifyAssets' }

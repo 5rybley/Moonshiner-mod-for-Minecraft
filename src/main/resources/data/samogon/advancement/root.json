@@ -1,0 +1,1 @@
+{"display":{"icon":{"id":"samogon:yeast"},"title":{"translate":"advancement.samogon.root.title"},"description":{"translate":"advancement.samogon.root.description"},"background":"samogon:textures/gui/advancements/backgrounds/workshop.png","frame":"task"},"criteria":{"tick":{"trigger":"minecraft:tick"}}}
