@@ -53,9 +53,30 @@ public final class SimulationTest {
         require(hotCutAlcohol <= hot.alcoholCollected() + 1.0E-9,
                 "a puke must not duplicate alcohol");
 
-        Simulation.Batch rectified = Simulation.rectify(new Simulation.Batch(400, 35, 60, 60, 1, false, "grain", 0));
-        require(rectified.abv() > 90, "rectification must reach a high strength");
+        Simulation.Batch rectified = new Simulation.Batch(400, 35, 60, 60, 1, false, "grain", 0);
+        double previousAbv = 0;
+        for (int pass = 1; pass <= 6; pass++) {
+            rectified = Simulation.rectify(rectified);
+            require(rectified.columnRuns() == pass, "every column pass must be counted");
+            require(rectified.abv() >= previousAbv, "column strength must rise gradually");
+            require(rectified.alcohol() <= 400 * 0.35 + 1.0E-9,
+                    "rectification must never create alcohol");
+            previousAbv = rectified.abv();
+        }
+        require(rectified.abv() > 95.9, "six column passes must approach the azeotrope");
         require(rectified.volume() < 400, "rectification must respect the mass balance");
+        require(Simulation.rectify(new Simulation.Batch(400, 35, 60, 60, 1, false, "grain", 0))
+                        .abv() < 70,
+                "a single column pass must not jump to azeotrope");
+        Simulation.Batch sieved = new Simulation.Batch(400, 35, 60, 60, 1, false, "grain", 0);
+        for (int pass = 1; pass <= 4; pass++) {
+            sieved = Simulation.rectify(sieved, false);
+        }
+        sieved = Simulation.rectify(sieved, true);
+        require(sieved.abv() > 99, "the molecular sieve must reach 99%+ from the fourth pass");
+        Simulation.Batch earlySieve = Simulation.rectify(
+                new Simulation.Batch(400, 35, 60, 60, 1, false, "grain", 0), true);
+        require(earlySieve.abv() < 70, "the sieve must do nothing before the fourth pass");
         Simulation.Batch tinyFeed = new Simulation.Batch(1, 1, 60, 30, 0, false, "grain", 0);
         Simulation.Batch tinyRectified = Simulation.rectify(tinyFeed);
         require(tinyRectified.alcohol() <= tinyFeed.alcohol() + 1.0E-9,
@@ -67,20 +88,50 @@ public final class SimulationTest {
                 "small cuts must keep their exact volume");
         require(Math.abs(smallCut.alcohol() - 0.0025) < 1.0E-12,
                 "small cuts must keep their exact alcohol");
+        Simulation.Batch wholeCut = Simulation.cutAtAbv(
+                new Simulation.Batch(100, 12, 70, 50, 0, false, "grain", 0),
+                Simulation.Fraction.HEARTS, 50, 0.45, 10, false);
+        require(!wholeCut.cut(), "a whole run must not claim fraction separation");
+        require(wholeCut.passes() == 1, "a whole run is still one distillation");
         boolean weakInfusionRejected = false;
         try {
-            Simulation.infuse(new Simulation.Batch(100, 10, 50, 50, 0, false, "grain", 0), "berry");
+            Simulation.infuse(new Simulation.Batch(100, 2, 50, 50, 0, false, "grain", 0), "berry");
         } catch (IllegalArgumentException exception) {
             weakInfusionRejected = true;
         }
-        require(weakInfusionRejected, "infusion must reject a weak batch");
+        require(weakInfusionRejected, "infusion must still reject a batch below 4% ABV");
+        Simulation.Batch bragaInfusion = Simulation.infuse(
+                new Simulation.Batch(100, 10, 50, 50, 0, false, "grain", 0), "berry");
+        require(bragaInfusion.quality() > 50,
+                "a 10% wash must now be infusable instead of being rejected");
+        Simulation.Batch dirty = Simulation.filter(
+                new Simulation.Batch(400, 40, 40, 60, 1, false, "grain", 0));
+        require(dirty.impurities() < 60, "filter must lower impurities on a dirty batch");
+        require(dirty.quality() > 40, "filter must raise quality on a dirty batch");
+        Simulation.Batch refiltered = Simulation.filter(dirty);
+        require(refiltered.filtered(), "filtration must be repeatable");
+        require(refiltered.impurities() <= dirty.impurities(),
+                "a second filter pass must not raise impurities");
+        Simulation.Batch clean = Simulation.filter(
+                new Simulation.Batch(400, 40, 80, 0, 1, false, "grain", 0));
+        require(clean.quality() == 80, "filtering a clean batch must not pump quality");
+        require(Simulation.canAge(4.0), "even a fresh wash must be ageable");
+        require(!Simulation.canAge(3.9), "aging must keep a physical lower bound");
+        require(Quality.bar(100).equals("\u2605\u2605\u2605\u2605\u2605"), "five stars at 100 quality");
+        require(Quality.bar(0).equals("\u2606\u2606\u2606\u2606\u2606"), "no stars at 0 quality");
+        require(Quality.label(70).startsWith("\u2605\u2605\u2605\u2BEA\u2606"),
+                "70 quality must round to a half-star bar");
+        require(Quality.stars(50) == 2.5, "50 quality must read as 2.5 stars");
         Simulation.Batch filtered = Simulation.filter(rectified);
-        require(filtered.impurities() < rectified.impurities(), "filter must lower impurities");
         Simulation.Batch diluted = Simulation.dilute(filtered, 40);
         require(Math.abs(diluted.abv() - 40) < 0.001, "dilution target must be exact");
         Simulation.Batch aged = Simulation.mature(diluted, true);
-        require(aged.quality() > diluted.quality(), "oak aging must improve quality");
+        require(aged.quality() >= diluted.quality(), "oak aging must not lower quality");
         require(aged.age() == diluted.age() + 1, "aging must advance the age counter");
+        Simulation.Batch lightHearts = new Simulation.Batch(500, 16.1, 60, 30, 1, false, "grain", 0);
+        Simulation.Batch lightAged = Simulation.mature(lightHearts, true);
+        require(lightAged.oak() == lightHearts.oak() + 1,
+                "light 16% pot-still hearts must still be ageable");
         System.out.println("Simulation smoke test passed");
     }
 

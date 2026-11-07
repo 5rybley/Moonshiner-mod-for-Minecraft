@@ -10,10 +10,11 @@ public final class VerifyAssets {
     static final Path ASSETS = Path.of("src/main/resources/assets/samogon");
     static final Path DATA = Path.of("src/main/resources/data");
     static final List<String> MACHINES = List.of("mash_tun", "fermentation_barrel", "distiller",
-            "reflux_column", "charcoal_filter", "dilution_basin", "blending_table", "aging_cask", "condenser");
+            "reflux_column", "charcoal_filter", "dilution_basin", "blending_table", "aging_cask", "condenser",
+            "tasting_table");
     static final List<String> BLOCKS = List.of("mash_tun", "fermentation_barrel", "distiller",
             "reflux_column", "charcoal_filter", "dilution_basin", "blending_table", "aging_cask", "condenser",
-            "samogon_crate");
+            "samogon_crate", "tasting_table");
     /** Multi-block structures that are built in the world and have no item of their own. */
     static final List<String> STRUCTURES = List.of("aging_barrel");
     static final List<String> ITEMS = List.of("sweet_wort", "fermented_mash", "heads_fraction",

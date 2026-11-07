@@ -42,6 +42,7 @@ public final class ModBlocks {
     public static final DeferredBlock<Block> BLENDING_TABLE = machine("blending_table", ProcessBlock.Kind.BLENDING);
     public static final DeferredBlock<Block> DILUTION_BASIN = machine("dilution_basin", ProcessBlock.Kind.DILUTION);
     public static final DeferredBlock<Block> AGING_CASK = machine("aging_cask", ProcessBlock.Kind.AGING);
+    public static final DeferredBlock<Block> TASTING_TABLE = machine("tasting_table", ProcessBlock.Kind.TASTING);
     public static final DeferredBlock<Block> CONDENSER = BLOCKS.register("condenser",
             () -> new CondenserBlock(BlockBehaviour.Properties.of()
                     .strength(2.5f).sound(SoundType.COPPER).noOcclusion()));

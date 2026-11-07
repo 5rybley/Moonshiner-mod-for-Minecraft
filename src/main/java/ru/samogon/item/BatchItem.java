@@ -2,6 +2,7 @@ package ru.samogon.item;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -17,9 +18,11 @@ import net.minecraft.world.level.Level;
 import ru.samogon.effect.Intoxication;
 import ru.samogon.process.BlendCatalog;
 import ru.samogon.process.Simulation.Batch;
+import ru.samogon.process.SpiritType;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public final class BatchItem extends Item {
     public enum Tincture {
@@ -73,6 +76,49 @@ public final class BatchItem extends Item {
     public Tincture tincture() { return tincture; }
     public boolean technical() { return technical; }
 
+    /**
+     * Drink type derived from the batch history. The fixed classic tinctures
+     * keep their identity; the oak-aged bottle is classified by its origin and
+     * process like any other aged spirit.
+     */
+    public SpiritType typeOf(Batch batch) {
+        if (tincture == Tincture.OAK) return SpiritType.of(batch);
+        if (tincture != Tincture.NONE) return SpiritType.TINCTURE;
+        return SpiritType.of(batch);
+    }
+
+    @Override
+    public Component getName(ItemStack stack) {
+        // The name always reflects what the bottle actually is: vodka, whiskey,
+        // chacha and so on. A blended artisan bottle puts the type in front of
+        // its composition-derived name, for example "Chacha «Sunset wind»".
+        // The fixed tincture bottles keep their own name.
+        if (!technical && (tincture == Tincture.NONE || tincture == Tincture.OAK) && BatchData.has(stack)) {
+            Batch batch = BatchData.read(stack);
+            SpiritType type = typeOf(batch);
+            if (type.isDrink()) {
+                if (batch.composition().isBlank()) {
+                    if (tincture == Tincture.NONE) return Component.translatable(type.translationKey());
+                } else {
+                    Component custom = stack.get(DataComponents.CUSTOM_NAME);
+                    // Keep a real anvil rename, but replace the auto-generated
+                    // blend name (old composition-only or new origin-aware)
+                    // with the typed one.
+                    boolean auto = custom != null
+                            && (custom.getString().equals(BlendCatalog.displayName(batch.composition()).getString())
+                            || custom.getString().equals(
+                                    BlendCatalog.displayName(batch.origin(), batch.composition()).getString()));
+                    if (custom != null && !auto) {
+                        return custom;
+                    }
+                    return BlendCatalog.displayName(batch.origin(), batch.composition(),
+                            Component.translatable(type.translationKey())).withStyle(ChatFormatting.GOLD);
+                }
+            }
+        }
+        return super.getName(stack);
+    }
+
     /** Technical fractions may be drunk at any strength, but ordinary drinks must be diluted to 60% ABV. */
     public boolean canDrink(Batch batch) {
         return batch.abv() > 0.1 && (technical || (drinkable && batch.abv() <= 60.0));
@@ -102,39 +148,23 @@ public final class BatchItem extends Item {
         Batch batch = BatchData.read(stack);
         lines.add(Component.translatable("tooltip.samogon.abv", String.format(Locale.ROOT, "%.1f", batch.abv()))
                 .withStyle(ChatFormatting.AQUA));
-        lines.add(Component.translatable("tooltip.samogon.volume", String.format(Locale.ROOT, "%.1f", batch.volume()))
-                .withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable("tooltip.samogon.quality", batch.quality(), batch.impurities())
-                .withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable("tooltip.samogon.origin", Component.translatable("origin.samogon." + batch.origin()),
-                batch.passes()).withStyle(ChatFormatting.GRAY));
-        if (batch.filtered()) lines.add(Component.translatable("tooltip.samogon.filtered").withStyle(ChatFormatting.GREEN));
-        if (batch.age() > 0) lines.add(Component.translatable("tooltip.samogon.age", batch.age()).withStyle(ChatFormatting.GOLD));
+        SpiritType type = typeOf(batch);
+        if (!technical && (type == SpiritType.WASH || (batch.abv() > 0.1 && type.isDrink()))) {
+            lines.add(Component.translatable("tooltip.samogon.type",
+                    Component.translatable(type.translationKey()))
+                    .withStyle(ChatFormatting.LIGHT_PURPLE));
+            lines.add(Component.translatable(type.descriptionKey())
+                    .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+        }
         if (!batch.composition().isBlank()) {
             lines.add(Component.translatable("tooltip.samogon.composition",
-                    BlendCatalog.describe(batch.composition())).withStyle(ChatFormatting.GOLD));
-            lines.add(Component.translatable("tooltip.samogon.blend.aroma",
-                    Component.translatable("aroma.samogon." + BlendCatalog.dominant(batch.composition()).id()))
-                    .withStyle(ChatFormatting.YELLOW));
+                    BlendCatalog.describe(batch.composition())).withStyle(ChatFormatting.GRAY));
         }
-        if (technical && batch.abv() > 0.1) {
-            lines.add(Component.translatable("tooltip.samogon.technical.drinkable").withStyle(ChatFormatting.RED));
-        } else if (!drinkable) {
-            lines.add(Component.translatable(batch.abv() > 60
-                    ? "message.samogon.too_strong" : "tooltip.samogon.not_drinkable")
-                    .withStyle(ChatFormatting.RED));
-        } else if (batch.abv() > 60) {
-            lines.add(Component.translatable("message.samogon.too_strong").withStyle(ChatFormatting.RED));
+        Map<String, Integer> auras = Intoxication.aurasFor(batch, tincture);
+        if (!auras.isEmpty()) {
+            lines.add(Component.translatable("tooltip.samogon.blend.effects",
+                    Intoxication.auraSummary(auras)).withStyle(ChatFormatting.GREEN));
         }
-        if (canDrink(batch)) {
-            lines.add(Component.translatable("tooltip.samogon.intoxication").withStyle(ChatFormatting.GOLD));
-            Tincture effective = effectiveTincture(batch);
-            if (effective != Tincture.NONE) {
-                lines.add(Component.translatable("tooltip.samogon.tincture." + effective.id())
-                        .withStyle(ChatFormatting.YELLOW));
-            }
-        }
-        lines.add(Component.translatable("tooltip.samogon.simulation").withStyle(ChatFormatting.DARK_GRAY));
     }
 
     @Override

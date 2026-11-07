@@ -18,7 +18,11 @@ public final class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> INTOXICATION =
             EFFECTS.register("intoxication", IntoxicationEffect::new);
 
-    /** Per-tincture bonus effects, activated while intoxication is level III or higher. */
+    /**
+     * Per-tincture aura effects. Unlike the intoxication debuffs they apply
+     * from level I, and each one's amplifier is the strength of its aura:
+     * five matching additives give a level-V aura and the strongest bonus.
+     */
     public static final DeferredHolder<MobEffect, MobEffect> BERRY_FURY =
             EFFECTS.register("berry_fury", () -> new SimpleEffect(MobEffectCategory.BENEFICIAL, 0xB43A5E));
     public static final DeferredHolder<MobEffect, MobEffect> HONEY_GUARD =

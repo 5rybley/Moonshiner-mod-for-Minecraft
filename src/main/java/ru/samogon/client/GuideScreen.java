@@ -7,26 +7,53 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import ru.samogon.process.SpiritType;
 import ru.samogon.registry.ModBlocks;
 import ru.samogon.registry.ModItems;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
  * An illustrated, parchment-styled handbook. It deliberately uses no container
  * widgets: the whole spread is drawn as a book, and the three-dimensional item
  * renders double as the diagrams.
+ *
+ * <p>The spread is split into two top tabs. {@code GUIDE} holds the chapters,
+ * listed in a scrollable side column while the chapter itself fills the rest of
+ * the page. {@code RECIPES} lists the moonshine recipes the player has already
+ * produced: the basic styles are always shown, the rest appear once a bottle of
+ * that type has been made. Both the side column and the page body scroll with
+ * the mouse wheel.</p>
  */
 public final class GuideScreen extends Screen {
     private static final int BOOK_W = 460;
     private static final int BOOK_H = 265;
     private static final int TEX_W = 920;
     private static final int TEX_H = 530;
+
+    private static final int TAB_Y = 11;
+    private static final int TAB_H = 22;
+    private static final int TAB_GUIDE_X = 198;
+    private static final int TAB_GUIDE_W = 112;
+    private static final int TAB_RECIPES_X = 314;
+    private static final int TAB_RECIPES_W = 124;
+
+    private static final int LIST_X = 16;
+    private static final int LIST_W = 152;
+    private static final int LIST_TOP = 46;
+    private static final int LIST_BOTTOM = 232;
+    private static final int CHAPTER_STEP = 17;
+    private static final int RECIPE_STEP = 38;
+
+    private static final int CONTENT_LEFT = 180;
     private static final int CONTENT_X = 184;
     private static final int CONTENT_W = 254;
-    private static final int TOC_X = 20;
-    private static final int TOC_TOP = 64;
-    private static final int TOC_STEP = 20;
+    private static final int CONTENT_BOTTOM = 232;
+    private static final int BODY_TOP = 74;
+    private static final int BODY_BASE = 50;
+    private static final int BODY_VIEW_H = CONTENT_BOTTOM - BODY_TOP;
 
     private static final ResourceLocation BOOK = ResourceLocation.fromNamespaceAndPath("samogon", "textures/gui/guide/book.png");
     private static final ResourceLocation ICONS = ResourceLocation.fromNamespaceAndPath("samogon", "textures/gui/guide/icons.png");
@@ -45,7 +72,14 @@ public final class GuideScreen extends Screen {
     private static final int HEARTS_COLOR = 0xFFC18A45;
     private static final int TAILS_COLOR = 0xFF7B4C2E;
 
+    /** 0 = guide, 1 = recipes. */
+    private int tab;
     private int pageIndex;
+    private int recipeIndex;
+    private int listScroll;
+    private int contentScroll;
+    private int listMaxScroll;
+    private int contentMaxScroll;
 
     public GuideScreen() {
         super(Component.translatable("guide.samogon.title"));
@@ -94,10 +128,113 @@ public final class GuideScreen extends Screen {
 
     private void drawBook(GuiGraphics g, int mx, int my) {
         g.blit(BOOK, 0, 0, BOOK_W, BOOK_H, 0.0F, 0.0F, TEX_W, TEX_H, TEX_W, TEX_H);
-        drawToc(g, mx, my);
+        drawChrome(g, mx, my);
+        if (tab == 0) {
+            drawGuide(g, mx, my);
+        } else {
+            drawRecipes(g, mx, my);
+        }
+        drawFooter(g);
+    }
+
+    // === TOP CHROME ===
+
+    private void drawChrome(GuiGraphics g, int mx, int my) {
+        g.drawString(this.font, Component.translatable("guide.samogon.book.title"), 18, 15, COPPER_DARK, false);
+        g.drawString(this.font, Component.translatable("guide.samogon.book.subtitle"), 18, 26, SOFT, false);
+
+        drawTab(g, TAB_GUIDE_X, TAB_GUIDE_W, "guide.samogon.tab.guide", tab == 0, mx, my);
+        drawTab(g, TAB_RECIPES_X, TAB_RECIPES_W, "guide.samogon.tab.recipes", tab == 1, mx, my);
+
+        boolean closeHover = mx >= 442 && mx <= 456 && my >= 8 && my <= 28;
+        g.drawString(this.font, "×", 446, 13, closeHover ? RED : COPPER, false);
+
+        g.fill(16, 35, 444, 36, PANEL_BORDER);
+    }
+
+    private void drawTab(GuiGraphics g, int x, int w, String key, boolean active, int mx, int my) {
+        boolean hover = mx >= x && mx <= x + w && my >= TAB_Y && my <= TAB_Y + TAB_H;
+        if (active) {
+            g.fill(x, TAB_Y, x + w, TAB_Y + TAB_H, 0x33A65A28);
+            g.fill(x, TAB_Y + TAB_H - 2, x + w, TAB_Y + TAB_H, COPPER);
+        } else if (hover) {
+            g.fill(x, TAB_Y, x + w, TAB_Y + TAB_H, 0x18A65A28);
+        }
+        Component label = Component.translatable(key);
+        int color = active ? COPPER_DARK : SOFT;
+        g.drawString(this.font, label, x + (w - this.font.width(label)) / 2, TAB_Y + 7, color, false);
+    }
+
+    private void drawFooter(GuiGraphics g) {
+        g.fill(CONTENT_LEFT, 236, CONTENT_LEFT + CONTENT_W, 237, 0x338A4A22);
+        int centerX = CONTENT_LEFT + CONTENT_W / 2;
+        if (tab == 1) {
+            List<Recipe> visible = visibleRecipes();
+            Component progress = Component.translatable("guide.samogon.recipes.progress",
+                    visible.size(), Recipe.values().length);
+            centered(g, progress, centerX, 243, SOFT);
+        } else {
+            centered(g, Component.translatable("guide.samogon.scroll"), centerX, 243, SOFT);
+        }
+    }
+
+    // === GUIDE TAB ===
+
+    private void drawGuide(GuiGraphics g, int mx, int my) {
+        drawGuideList(g, mx, my);
         Page page = Page.values()[pageIndex];
-        drawHeader(g, page, mx, my);
-        switch (page) {
+        drawContentHeader(g, page.titleKey, page.tagKey,
+                String.format(Locale.ROOT, "%02d / %02d", pageIndex + 1, Page.values().length));
+
+        beginClip(g, CONTENT_LEFT, BODY_TOP, CONTENT_W + 4, BODY_VIEW_H);
+        g.pose().pushPose();
+        g.pose().translate(0.0F, (float) (BODY_TOP - BODY_BASE - contentScroll), 0.0F);
+        int bottom = drawPageBody(g, page);
+        g.pose().popPose();
+        g.disableScissor();
+
+        contentMaxScroll = Math.max(0, (bottom - BODY_BASE) - BODY_VIEW_H);
+        contentScroll = clamp(contentScroll, 0, contentMaxScroll);
+        drawScrollbar(g, CONTENT_LEFT + CONTENT_W + 1, BODY_TOP, CONTENT_BOTTOM, contentScroll, contentMaxScroll);
+    }
+
+    private void drawGuideList(GuiGraphics g, int mx, int my) {
+        int count = Page.values().length;
+        int total = count * CHAPTER_STEP;
+        int view = LIST_BOTTOM - LIST_TOP;
+        listMaxScroll = Math.max(0, total - view);
+        listScroll = clamp(listScroll, 0, listMaxScroll);
+
+        beginClip(g, LIST_X, LIST_TOP, LIST_W, view);
+        for (int i = 0; i < count; i++) {
+            int y = LIST_TOP - listScroll + i * CHAPTER_STEP;
+            if (y + CHAPTER_STEP < LIST_TOP || y > LIST_BOTTOM) continue;
+            boolean active = i == pageIndex;
+            boolean hover = mx >= LIST_X && mx <= LIST_X + LIST_W && my >= y && my <= y + CHAPTER_STEP - 2;
+            if (active) {
+                g.fill(LIST_X - 1, y, LIST_X + LIST_W, y + CHAPTER_STEP - 2, 0x30A65A28);
+                g.fill(LIST_X - 1, y, LIST_X + 1, y + CHAPTER_STEP - 2, COPPER);
+            } else if (hover) {
+                g.fill(LIST_X - 1, y, LIST_X + LIST_W, y + CHAPTER_STEP - 2, 0x18A65A28);
+            }
+            drawItem(g, pageIcon(Page.values()[i]), LIST_X + 2, y, 14);
+            g.drawString(this.font, Component.translatable(Page.values()[i].tocKey),
+                    LIST_X + 20, y + 2, active ? COPPER_DARK : INK, false);
+        }
+        g.disableScissor();
+        drawScrollbar(g, LIST_X + LIST_W + 1, LIST_TOP, LIST_BOTTOM, listScroll, listMaxScroll);
+    }
+
+    private void drawContentHeader(GuiGraphics g, String titleKey, String tagKey, String counter) {
+        g.drawString(this.font, Component.translatable(titleKey).withStyle(ChatFormatting.BOLD),
+                CONTENT_X, 46, COPPER_DARK, false);
+        g.drawString(this.font, counter, CONTENT_LEFT + CONTENT_W - this.font.width(counter), 47, SOFT, false);
+        g.drawString(this.font, Component.translatable(tagKey), CONTENT_X, 57, SOFT, false);
+        g.fill(CONTENT_LEFT, 69, CONTENT_LEFT + CONTENT_W, 70, PANEL_BORDER);
+    }
+
+    private int drawPageBody(GuiGraphics g, Page page) {
+        return switch (page) {
             case OVERVIEW -> drawOverview(g);
             case MASH -> drawMash(g);
             case RAW -> drawRaw(g);
@@ -108,70 +245,141 @@ public final class GuideScreen extends Screen {
             case AGE -> drawAge(g);
             case TROUBLE -> drawTrouble(g);
             case MEMO -> drawMemo(g);
+        };
+    }
+
+    // === RECIPES TAB ===
+
+    private void drawRecipes(GuiGraphics g, int mx, int my) {
+        List<Recipe> visible = visibleRecipes();
+        if (visible.isEmpty()) {
+            recipeIndex = 0;
+        } else {
+            recipeIndex = clamp(recipeIndex, 0, visible.size() - 1);
         }
-        drawFooter(g, mx, my);
+        drawRecipeList(g, mx, my, visible);
+
+        String counter = visible.isEmpty() ? "00 / 00"
+                : String.format(Locale.ROOT, "%02d / %02d", recipeIndex + 1, visible.size());
+        drawContentHeader(g, "guide.samogon.recipes.title", "guide.samogon.recipes.tag", counter);
+
+        beginClip(g, CONTENT_LEFT, BODY_TOP, CONTENT_W + 4, BODY_VIEW_H);
+        g.pose().pushPose();
+        g.pose().translate(0.0F, (float) (BODY_TOP - BODY_BASE - contentScroll), 0.0F);
+        int bottom = visible.isEmpty()
+                ? drawTextBody(g, "guide.samogon.recipes.empty")
+                : drawRecipeBody(g, visible.get(recipeIndex));
+        g.pose().popPose();
+        g.disableScissor();
+
+        contentMaxScroll = Math.max(0, (bottom - BODY_BASE) - BODY_VIEW_H);
+        contentScroll = clamp(contentScroll, 0, contentMaxScroll);
+        drawScrollbar(g, CONTENT_LEFT + CONTENT_W + 1, BODY_TOP, CONTENT_BOTTOM, contentScroll, contentMaxScroll);
     }
 
-    private static int tocStep() {
-        return Page.values().length > 8 ? 17 : TOC_STEP;
-    }
+    private void drawRecipeList(GuiGraphics g, int mx, int my, List<Recipe> visible) {
+        int total = visible.size() * RECIPE_STEP;
+        int view = LIST_BOTTOM - LIST_TOP;
+        listMaxScroll = Math.max(0, total - view);
+        listScroll = clamp(listScroll, 0, listMaxScroll);
 
-    private void drawToc(GuiGraphics g, int mx, int my) {
-        g.drawString(this.font, Component.translatable("guide.samogon.book.title"), TOC_X, 17, COPPER_DARK, false);
-        g.drawString(this.font, Component.translatable("guide.samogon.book.subtitle"), TOC_X, 29, SOFT, false);
-        g.fill(TOC_X, 40, 158, 41, PANEL_BORDER);
-        g.drawString(this.font, Component.translatable("guide.samogon.book.chapters"), TOC_X, 50, SOFT, false);
-
-        int step = tocStep();
-        for (int i = 0; i < Page.values().length; i++) {
-            int y = TOC_TOP + i * step;
-            boolean active = i == pageIndex;
-            boolean hover = mx >= 15 && mx <= 160 && my >= y - 4 && my <= y + 12;
+        beginClip(g, LIST_X, LIST_TOP, LIST_W, view);
+        for (int i = 0; i < visible.size(); i++) {
+            Recipe recipe = visible.get(i);
+            int y = LIST_TOP - listScroll + i * RECIPE_STEP;
+            if (y + RECIPE_STEP < LIST_TOP || y > LIST_BOTTOM) continue;
+            boolean active = i == recipeIndex;
+            boolean hover = mx >= LIST_X && mx <= LIST_X + LIST_W && my >= y && my <= y + RECIPE_STEP - 4;
             if (active) {
-                g.fill(15, y - 4, 160, y + 12, 0x30A65A28);
-                g.fill(15, y - 4, 18, y + 12, COPPER);
+                g.fill(LIST_X - 1, y, LIST_X + LIST_W, y + RECIPE_STEP - 4, 0x30A65A28);
+                g.fill(LIST_X - 1, y, LIST_X + 1, y + RECIPE_STEP - 4, COPPER);
             } else if (hover) {
-                g.fill(15, y - 4, 160, y + 12, 0x18A65A28);
+                g.fill(LIST_X - 1, y, LIST_X + LIST_W, y + RECIPE_STEP - 4, 0x18A65A28);
             }
-            drawItem(g, pageIcon(Page.values()[i]), TOC_X, y - 4, 14);
-            g.drawString(this.font, Component.translatable(Page.values()[i].tocKey),
-                    TOC_X + 18, y, active ? COPPER_DARK : INK, false);
+            drawItem(g, recipeIcon(recipe), LIST_X + 1, y + 1, 18);
+            Component name = Component.translatable(recipe.type.translationKey())
+                    .withStyle(ChatFormatting.BOLD);
+            int nameWidth = LIST_W - 26;
+            var nameLines = this.font.split(name, nameWidth);
+            for (int line = 0; line < nameLines.size() && line < 2; line++) {
+                g.drawString(this.font, nameLines.get(line), LIST_X + 24, y + 1 + line * 9,
+                        active ? COPPER_DARK : INK, false);
+            }
+            int originY = y + 1 + Math.min(2, nameLines.size()) * 9 + 1;
+            g.drawString(this.font, Component.translatable(
+                            "guide.samogon.recipe.origin." + recipe.origin),
+                    LIST_X + 24, originY, SOFT, false);
         }
-
-        g.drawString(this.font, Component.translatable("guide.samogon.book.close"), TOC_X, 243, SOFT, false);
+        g.disableScissor();
+        drawScrollbar(g, LIST_X + LIST_W + 1, LIST_TOP, LIST_BOTTOM, listScroll, listMaxScroll);
     }
 
-    private void drawHeader(GuiGraphics g, Page page, int mx, int my) {
-        g.drawString(this.font, Component.translatable(page.titleKey).withStyle(ChatFormatting.BOLD),
-                CONTENT_X, 16, COPPER_DARK, false);
-        drawIcon(g, 6, CONTENT_X, 28, 8);
-        g.drawString(this.font, Component.translatable(page.tagKey), CONTENT_X + 11, 28, SOFT, false);
-
-        String index = String.format(Locale.ROOT, "%02d", pageIndex + 1);
-        g.drawString(this.font, index, 414, 16, SOFT, false);
-        boolean closeHover = mx >= 430 && mx <= 450 && my >= 8 && my <= 28;
-        g.drawString(this.font, "×", 438, 13, closeHover ? RED : COPPER, false);
-
-        g.fill(CONTENT_X, 40, CONTENT_X + CONTENT_W, 41, PANEL_BORDER);
-        g.fill(310, 39, 313, 42, 0xAA8A4A22);
-    }
-
-    private void drawFooter(GuiGraphics g, int mx, int my) {
-        g.fill(CONTENT_X, 238, CONTENT_X + CONTENT_W, 239, 0x338A4A22);
-        String pager = String.format(Locale.ROOT, "%02d / %02d", pageIndex + 1, Page.values().length);
-        centered(g, pager, 400, 243, SOFT);
-
-        boolean leftHover = mx >= 365 && mx <= 382 && my >= 238 && my <= 252;
-        boolean rightHover = mx >= 418 && mx <= 436 && my >= 238 && my <= 252;
-        int leftColor = pageIndex > 0 ? (leftHover ? COPPER : SOFT) : 0x668A7A5A;
-        int rightColor = pageIndex < Page.values().length - 1 ? (rightHover ? COPPER : SOFT) : 0x668A7A5A;
-        g.drawString(this.font, "<", 370, 242, leftColor, false);
-        g.drawString(this.font, ">", 428, 242, rightColor, false);
-    }
-
-    private void drawOverview(GuiGraphics g) {
+    private int drawRecipeBody(GuiGraphics g, Recipe recipe) {
         int x = CONTENT_X;
-        int y = 50;
+        int w = CONTENT_W;
+        int y = BODY_BASE;
+
+        drawItem(g, recipeIcon(recipe), x, y, 30);
+        g.drawString(this.font, Component.translatable(recipe.type.translationKey()).withStyle(ChatFormatting.BOLD),
+                x + 38, y + 1, COPPER_DARK, false);
+        text(g, recipe.type.descriptionKey(), x + 38, y + 12, w - 38, SOFT);
+        y = Math.max(y + 30, y + 12 + textHeight(recipe.type.descriptionKey(), w - 38)) + 6;
+
+        Component origin = Component.translatable("guide.samogon.recipe.origin",
+                Component.translatable("guide.samogon.recipe.origin." + recipe.origin));
+        y += textComponent(g, origin, x, y, w, INK) + 5;
+
+        g.drawString(this.font, Component.translatable("guide.samogon.recipe.steps").withStyle(ChatFormatting.BOLD),
+                x, y, COPPER_DARK, false);
+        y += 12;
+        for (int i = 0; i < recipe.steps.length; i++) {
+            String key = "guide.samogon.recipe.step." + recipe.steps[i];
+            g.fill(x, y + 1, x + 2, y + 8, COPPER);
+            g.drawString(this.font, String.valueOf(i + 1), x + 5, y, COPPER_DARK, false);
+            int height = textHeight(key, w - 18);
+            text(g, key, x + 18, y, w - 18, INK);
+            y += Math.max(10, height) + 3;
+        }
+        return y;
+    }
+
+    private int drawTextBody(GuiGraphics g, String key) {
+        int y = BODY_BASE;
+        text(g, key, CONTENT_X, y, CONTENT_W, SOFT);
+        return y + textHeight(key, CONTENT_W) + 2;
+    }
+
+    private static List<Recipe> visibleRecipes() {
+        List<Recipe> result = new ArrayList<>();
+        for (Recipe recipe : Recipe.values()) {
+            if (recipe.base || ClientRecipeBook.has(recipe.type.id())) {
+                result.add(recipe);
+            }
+        }
+        return result;
+    }
+
+    private ItemStack recipeIcon(Recipe recipe) {
+        return switch (recipe.type) {
+            case BRAGA -> new ItemStack(ModItems.FERMENTED_MASH.get());
+            case RUM, WHISKEY, SCOTCH, BRANDY, COGNAC, CALVADOS ->
+                    new ItemStack(ModItems.OAK_AGED_SPIRIT.get());
+            case VODKA -> new ItemStack(ModItems.DILUTED_SPIRIT.get());
+            case SPIRIT -> new ItemStack(ModItems.NEUTRAL_SPIRIT.get());
+            case COCOA -> new ItemStack(Items.COCOA_BEANS);
+            case MELON -> new ItemStack(Items.MELON_SLICE);
+            case CARROT -> new ItemStack(Items.CARROT);
+            case CACTUS -> new ItemStack(Items.CACTUS);
+            case TINCTURE -> new ItemStack(ModItems.BERRY_TINCTURE.get());
+            default -> new ItemStack(ModItems.SAMOGON.get());
+        };
+    }
+
+    // === PAGE BODIES ===
+
+    private int drawOverview(GuiGraphics g) {
+        int x = CONTENT_X;
+        int y = BODY_BASE;
         int w = CONTENT_W;
         text(g, "guide.samogon.page.overview.lead", x, y, w, INK);
         int flowY = y + textHeight("guide.samogon.page.overview.lead", w) + 4;
@@ -198,9 +406,10 @@ public final class GuideScreen extends Screen {
         panel(g, x, tipY, w, 24);
         drawIcon(g, 6, x + 5, tipY + 6, 10);
         text(g, "guide.samogon.page.overview.tip", x + 20, tipY + 4, w - 25, INK);
+        return tipY + 24;
     }
 
-    private void drawMash(GuiGraphics g) {
+    private int drawMash(GuiGraphics g) {
         int x = CONTENT_X;
         int w = CONTENT_W;
         drawItem(g, new ItemStack(ModBlocks.MASH_TUN.get()), 198, 50, 34);
@@ -220,10 +429,14 @@ public final class GuideScreen extends Screen {
         text(g, "guide.samogon.page.mash.tip", x + 20, y + 4, w - 25, INK);
 
         int noteY = y + tipH + 4;
-        if (noteY < 226) note(g, 3, x, noteY, w, "guide.samogon.page.mash.note", GREEN);
+        if (noteY < 226) {
+            note(g, 3, x, noteY, w, "guide.samogon.page.mash.note", GREEN);
+            return noteY + textHeight("guide.samogon.page.mash.note", w - 11);
+        }
+        return y + tipH;
     }
 
-    private void drawRaw(GuiGraphics g) {
+    private int drawRaw(GuiGraphics g) {
         int x = CONTENT_X;
         int w = CONTENT_W;
         ItemStack[] raw = {
@@ -231,16 +444,24 @@ public final class GuideScreen extends Screen {
                 new ItemStack(Items.WHEAT),
                 new ItemStack(Items.SUGAR),
                 new ItemStack(Items.SWEET_BERRIES),
-                new ItemStack(Items.HONEY_BOTTLE)
+                new ItemStack(Items.HONEY_BOTTLE),
+                new ItemStack(Items.POTATO),
+                new ItemStack(Items.BEETROOT),
+                new ItemStack(Items.SUGAR_CANE),
+                new ItemStack(Items.APPLE)
         };
         String[] keys = {
                 "guide.samogon.page.raw.malt",
                 "guide.samogon.page.raw.wheat",
                 "guide.samogon.page.raw.sugar",
                 "guide.samogon.page.raw.berries",
-                "guide.samogon.page.raw.honey"
+                "guide.samogon.page.raw.honey",
+                "guide.samogon.page.raw.potato",
+                "guide.samogon.page.raw.beetroot",
+                "guide.samogon.page.raw.cane",
+                "guide.samogon.page.raw.apple"
         };
-        int y = 52;
+        int y = BODY_BASE;
         for (int i = 0; i < raw.length; i++) {
             drawItem(g, raw[i], x, y + 1, 16);
             text(g, keys[i], x + 21, y, w - 21, INK);
@@ -256,9 +477,10 @@ public final class GuideScreen extends Screen {
         panel(g, x, y + 2, w, tipH);
         drawIcon(g, 6, x + 5, y + 5, 10);
         text(g, "guide.samogon.page.raw.tip", x + 20, y + 4, w - 25, INK);
+        return y + tipH + 2;
     }
 
-    private void drawTrouble(GuiGraphics g) {
+    private int drawTrouble(GuiGraphics g) {
         int x = CONTENT_X;
         int w = CONTENT_W;
         String[] keys = {
@@ -270,7 +492,7 @@ public final class GuideScreen extends Screen {
                 "guide.samogon.page.trouble.basin",
                 "guide.samogon.page.trouble.bottle"
         };
-        int y = 52;
+        int y = BODY_BASE;
         for (int i = 0; i < keys.length; i++) {
             int h = textHeight(keys[i], w - 14);
             g.fill(x, y + 1, x + 2, y + 10, COPPER);
@@ -283,9 +505,10 @@ public final class GuideScreen extends Screen {
         panel(g, x, y + 2, w, tipH);
         drawIcon(g, 8, x + 5, y + 5, 10);
         text(g, "guide.samogon.page.trouble.tip", x + 20, y + 4, w - 25, GREEN);
+        return y + tipH + 2;
     }
 
-    private void drawStill(GuiGraphics g) {
+    private int drawStill(GuiGraphics g) {
         int x = CONTENT_X;
         int w = CONTENT_W;
         drawItem(g, new ItemStack(ModBlocks.DISTILLER.get()), 188, 50, 42);
@@ -317,10 +540,14 @@ public final class GuideScreen extends Screen {
         y += step(g, x, y, w, 10, "guide.samogon.page.still.step2", INK) + 3;
         y += step(g, x, y, w, 6, "guide.samogon.page.still.step3", INK) + 3;
         y += step(g, x, y, w, 7, "guide.samogon.page.still.step4", RED) + 4;
-        if (y < 224) note(g, 5, x, y, w, "guide.samogon.page.still.note", GREEN);
+        if (y < 224) {
+            note(g, 5, x, y, w, "guide.samogon.page.still.note", GREEN);
+            return y + textHeight("guide.samogon.page.still.note", w - 11);
+        }
+        return y;
     }
 
-    private void drawClean(GuiGraphics g) {
+    private int drawClean(GuiGraphics g) {
         int x = CONTENT_X;
         int w = CONTENT_W;
         drawItem(g, new ItemStack(ModBlocks.REFLUX_COLUMN.get()), 192, 50, 38);
@@ -342,9 +569,10 @@ public final class GuideScreen extends Screen {
         panel(g, x, y, w, tipH);
         drawIcon(g, 5, x + 5, y + 5, 10);
         text(g, "guide.samogon.page.clean.tip", x + 20, y + 4, w - 25, INK);
+        return y + tipH;
     }
 
-    private void drawDilute(GuiGraphics g) {
+    private int drawDilute(GuiGraphics g) {
         int x = CONTENT_X;
         int w = CONTENT_W;
         drawItem(g, new ItemStack(ModBlocks.DILUTION_BASIN.get()), 188, 50, 40);
@@ -384,9 +612,10 @@ public final class GuideScreen extends Screen {
         panel(g, x, y, w, tipH);
         drawIcon(g, 10, x + 5, y + 5, 10);
         text(g, "guide.samogon.page.dilute.tip", x + 20, y + 4, w - 25, INK);
+        return y + tipH;
     }
 
-    private void drawBlend(GuiGraphics g) {
+    private int drawBlend(GuiGraphics g) {
         int x = CONTENT_X;
         int w = CONTENT_W;
         drawItem(g, new ItemStack(ModBlocks.BLENDING_TABLE.get()), 188, 50, 34);
@@ -418,9 +647,10 @@ public final class GuideScreen extends Screen {
         panel(g, x, y, w, tipH);
         drawIcon(g, 6, x + 5, y + 5, 10);
         text(g, "guide.samogon.page.blend.tip", x + 20, y + 4, w - 25, INK);
+        return y + tipH;
     }
 
-    private void drawAge(GuiGraphics g) {
+    private int drawAge(GuiGraphics g) {
         int x = CONTENT_X;
         int w = CONTENT_W;
         drawItem(g, new ItemStack(ModBlocks.AGING_CASK.get()), 191, 50, 38);
@@ -436,13 +666,13 @@ public final class GuideScreen extends Screen {
 
         int gaugeY = 102;
         int gaugeH = 10;
-        int from = x + Math.round(w * 0.2F);
+        int from = x + Math.round(w * 0.04F);
         int to = x + Math.round(w * 0.6F);
         g.fill(x, gaugeY, x + w, gaugeY + gaugeH, 0xFFE2CDA1);
         g.fill(from, gaugeY, to, gaugeY + gaugeH, HEARTS_COLOR);
         g.fill(from - 1, gaugeY - 2, from + 1, gaugeY + gaugeH + 2, COPPER);
         g.fill(to - 1, gaugeY - 2, to + 1, gaugeY + gaugeH + 2, COPPER);
-        g.drawString(this.font, "20%", from - 11, 114, COPPER_DARK, false);
+        g.drawString(this.font, "4%", from - 5, 114, COPPER_DARK, false);
         g.drawString(this.font, "60%", to - 11, 114, COPPER_DARK, false);
         g.drawString(this.font, Component.translatable("guide.samogon.page.age.gauge.caption"), x, 124, SOFT, false);
 
@@ -456,12 +686,13 @@ public final class GuideScreen extends Screen {
         panel(g, x, y, w, tipH);
         drawIcon(g, 7, x + 5, y + 5, 10);
         text(g, "guide.samogon.page.age.tip", x + 20, y + 4, w - 25, RED);
+        return y + tipH;
     }
 
-    private void drawMemo(GuiGraphics g) {
+    private int drawMemo(GuiGraphics g) {
         int x = CONTENT_X;
         int w = CONTENT_W;
-        int y = 50;
+        int y = BODY_BASE;
         int headerH = 14;
         int rowH = 14;
         int[] cols = {96, 50, 108};
@@ -500,7 +731,10 @@ public final class GuideScreen extends Screen {
         int safetyY = panelY + 31;
         drawIcon(g, 7, x + 2, safetyY + 2, 10);
         text(g, "guide.samogon.page.memo.safety", x + 17, safetyY, w - 20, RED);
+        return safetyY + textHeight("guide.samogon.page.memo.safety", w - 20);
     }
+
+    // === DRAW HELPERS ===
 
     private int step(GuiGraphics g, int x, int y, int w, int icon, String key, int color) {
         drawIcon(g, icon, x, y + 1, 9);
@@ -514,10 +748,15 @@ public final class GuideScreen extends Screen {
     }
 
     private void text(GuiGraphics g, String key, int x, int y, int width, int color) {
-        var lines = this.font.split(Component.translatable(key), width);
+        textComponent(g, Component.translatable(key), x, y, width, color);
+    }
+
+    private int textComponent(GuiGraphics g, Component text, int x, int y, int width, int color) {
+        var lines = this.font.split(text, width);
         for (int i = 0; i < lines.size(); i++) {
             g.drawString(this.font, lines.get(i), x, y + i * 9, color, false);
         }
+        return lines.size() * 9;
     }
 
     /**
@@ -527,10 +766,6 @@ public final class GuideScreen extends Screen {
      */
     private void centered(GuiGraphics g, Component text, int centerX, int y, int color) {
         g.drawString(this.font, text, centerX - this.font.width(text) / 2, y, color, false);
-    }
-
-    private void centered(GuiGraphics g, String text, int centerX, int y, int color) {
-        centered(g, Component.literal(text), centerX, y, color);
     }
 
     private int textHeight(String key, int width) {
@@ -584,30 +819,72 @@ public final class GuideScreen extends Screen {
         };
     }
 
+    // === SCROLLING ===
+
+    /** Clips subsequent drawing to a book-local rectangle, translated to the screen. */
+    private void beginClip(GuiGraphics g, int x, int y, int w, int h) {
+        float scale = bookScale();
+        int x0 = bookX() + Math.round(x * scale);
+        int y0 = bookY() + Math.round(y * scale);
+        int x1 = bookX() + Math.round((x + w) * scale);
+        int y1 = bookY() + Math.round((y + h) * scale);
+        g.enableScissor(x0, y0, x1, y1);
+    }
+
+    private void drawScrollbar(GuiGraphics g, int x, int top, int bottom, int scroll, int maxScroll) {
+        if (maxScroll <= 0) return;
+        int trackH = bottom - top;
+        int contentH = trackH + maxScroll;
+        int thumbH = Math.max(14, trackH * trackH / Math.max(1, contentH));
+        int thumbY = top + (trackH - thumbH) * scroll / Math.max(1, maxScroll);
+        g.fill(x, top, x + 2, bottom, 0x228A4A22);
+        g.fill(x, thumbY, x + 2, thumbY + thumbH, 0xAA8A4A22);
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    // === INPUT ===
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0) {
             int mx = localX(mouseX);
             int my = localY(mouseY);
-            if (mx >= 430 && mx <= 450 && my >= 8 && my <= 28) {
+
+            if (mx >= 442 && mx <= 456 && my >= 8 && my <= 28) {
                 this.onClose();
                 return true;
             }
-            int step = tocStep();
-            for (int i = 0; i < Page.values().length; i++) {
-                int y = TOC_TOP + i * step;
-                if (mx >= 15 && mx <= 160 && my >= y - 4 && my <= y + 12) {
-                    pageIndex = i;
-                    return true;
+            if (mx >= TAB_GUIDE_X && mx <= TAB_GUIDE_X + TAB_GUIDE_W && my >= TAB_Y && my <= TAB_Y + TAB_H) {
+                switchTab(0);
+                return true;
+            }
+            if (mx >= TAB_RECIPES_X && mx <= TAB_RECIPES_X + TAB_RECIPES_W && my >= TAB_Y && my <= TAB_Y + TAB_H) {
+                switchTab(1);
+                return true;
+            }
+
+            if (mx >= LIST_X && mx <= LIST_X + LIST_W && my >= LIST_TOP && my <= LIST_BOTTOM) {
+                if (tab == 0) {
+                    int index = (my - LIST_TOP + listScroll) / CHAPTER_STEP;
+                    if (index >= 0 && index < Page.values().length) {
+                        pageIndex = index;
+                        contentScroll = 0;
+                        contentMaxScroll = 0;
+                        return true;
+                    }
+                } else {
+                    List<Recipe> visible = visibleRecipes();
+                    int index = (my - LIST_TOP + listScroll) / RECIPE_STEP;
+                    if (index >= 0 && index < visible.size()) {
+                        recipeIndex = index;
+                        contentScroll = 0;
+                        contentMaxScroll = 0;
+                        return true;
+                    }
                 }
-            }
-            if (mx >= 365 && mx <= 382 && my >= 238 && my <= 252) {
-                previousPage();
-                return true;
-            }
-            if (mx >= 418 && mx <= 436 && my >= 238 && my <= 252) {
-                nextPage();
-                return true;
             }
             return mx >= 0 && mx <= BOOK_W && my >= 0 && my <= BOOK_H;
         }
@@ -615,24 +892,61 @@ public final class GuideScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 263) {
-            previousPage();
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        int mx = localX(mouseX);
+        int my = localY(mouseY);
+        int amount = (int) Math.round(scrollY * 18.0);
+        if (amount == 0) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+
+        if (mx >= LIST_X && mx <= LIST_X + LIST_W && my >= LIST_TOP && my <= LIST_BOTTOM) {
+            listScroll = clamp(listScroll - amount, 0, listMaxScroll);
             return true;
         }
-        if (keyCode == 262) {
-            nextPage();
+        if (mx >= CONTENT_LEFT && mx <= CONTENT_LEFT + CONTENT_W && my >= BODY_TOP && my <= CONTENT_BOTTOM) {
+            contentScroll = clamp(contentScroll - amount, 0, contentMaxScroll);
             return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    private void switchTab(int next) {
+        if (tab == next) return;
+        tab = next;
+        listScroll = 0;
+        listMaxScroll = 0;
+        contentScroll = 0;
+        contentMaxScroll = 0;
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == 258) {
+            switchTab(tab == 0 ? 1 : 0);
+            return true;
+        }
+        if (tab == 0) {
+            if (keyCode == 263) {
+                previousPage();
+                return true;
+            }
+            if (keyCode == 262) {
+                nextPage();
+                return true;
+            }
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     private void previousPage() {
         pageIndex = Math.max(0, pageIndex - 1);
+        contentScroll = 0;
+        contentMaxScroll = 0;
     }
 
     private void nextPage() {
         pageIndex = Math.min(Page.values().length - 1, pageIndex + 1);
+        contentScroll = 0;
+        contentMaxScroll = 0;
     }
 
     @Override
@@ -660,6 +974,46 @@ public final class GuideScreen extends Screen {
             this.tocKey = tocKey;
             this.titleKey = titleKey;
             this.tagKey = tagKey;
+        }
+    }
+
+    /**
+     * A recipe is defined by the spirit type it produces and the ordered
+     * production steps. Basic recipes are always readable; the rest only show
+     * up once the player has actually made that type.
+     */
+    private enum Recipe {
+        BRAGA(SpiritType.BRAGA, true, "any", "mash", "ferment"),
+        MOONSHINE(SpiritType.MOONSHINE, true, "any", "mash", "ferment", "distill_whole"),
+        CHACHA(SpiritType.CHACHA, true, "berry", "mash", "ferment", "distill_cuts"),
+        RUM(SpiritType.RUM, true, "sugar", "mash", "ferment", "distill_cuts", "oak"),
+        WHISKEY(SpiritType.WHISKEY, true, "grain", "mash", "ferment", "distill_cuts", "oak"),
+        VODKA(SpiritType.VODKA, true, "grain", "distill_cuts", "rectify", "filter", "dilute"),
+        SPIRIT(SpiritType.SPIRIT, true, "grain", "distill_cuts", "rectify"),
+        BRANDY(SpiritType.BRANDY, false, "berry", "mash", "ferment", "distill_cuts", "oak"),
+        COGNAC(SpiritType.COGNAC, false, "berry", "mash", "ferment", "distill_cuts", "distill2", "oak"),
+        SCOTCH(SpiritType.SCOTCH, false, "grain", "mash", "ferment", "distill_cuts", "distill2", "oak"),
+        CALVADOS(SpiritType.CALVADOS, false, "apple", "mash", "ferment", "distill_cuts", "oak"),
+        CACHACA(SpiritType.CACHACA, false, "cane", "mash", "ferment", "distill_cuts"),
+        POTATO(SpiritType.POTATO, false, "potato", "mash", "ferment", "distill_cuts"),
+        BEET(SpiritType.BEET, false, "beetroot", "mash", "ferment", "distill_cuts"),
+        MEAD(SpiritType.MEAD, false, "honey", "mash", "ferment", "distill_cuts"),
+        COCOA(SpiritType.COCOA, true, "cocoa", "mash", "ferment", "distill_cuts"),
+        MELON(SpiritType.MELON, true, "melon", "mash", "ferment", "distill_cuts"),
+        CARROT(SpiritType.CARROT, true, "carrot", "mash", "ferment", "distill_cuts"),
+        CACTUS(SpiritType.CACTUS, true, "cactus", "mash", "ferment", "distill_cuts"),
+        TINCTURE(SpiritType.TINCTURE, false, "any", "distill_cuts", "blend", "infusion");
+
+        final SpiritType type;
+        final boolean base;
+        final String origin;
+        final String[] steps;
+
+        Recipe(SpiritType type, boolean base, String origin, String... steps) {
+            this.type = type;
+            this.base = base;
+            this.origin = origin;
+            this.steps = steps;
         }
     }
 }

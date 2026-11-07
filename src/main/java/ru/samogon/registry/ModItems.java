@@ -24,7 +24,7 @@ public final class ModItems {
     public static final DeferredItem<GuideItem> GUIDE = ITEMS.registerItem("distillers_guide", GuideItem::new,
             new Item.Properties().stacksTo(1));
     public static final DeferredItem<BatchItem> SWEET_WORT = batch("sweet_wort", 0, false, 1000);
-    public static final DeferredItem<BatchItem> FERMENTED_MASH = batch("fermented_mash", 12, false, 1000);
+    public static final DeferredItem<BatchItem> FERMENTED_MASH = batch("fermented_mash", 12, true, 1000);
     public static final DeferredItem<BatchItem> HEADS_FRACTION = technical("heads_fraction", 70);
     public static final DeferredItem<BatchItem> HEARTS_FRACTION = batch("hearts_fraction", 55, true, 100);
     public static final DeferredItem<BatchItem> TAILS_FRACTION = technical("tails_fraction", 20);

@@ -42,6 +42,11 @@ public final class CondenserBlockEntity extends BlockEntity {
         return water >= ProcessBlockEntity.MAX_COOLANT;
     }
 
+    /** Free space left in the tank, in coolant units. */
+    public int remaining() {
+        return Math.max(0, ProcessBlockEntity.MAX_COOLANT - water);
+    }
+
     /** Adds water and returns how much was actually accepted. */
     public int addWater(int amount) {
         if (amount <= 0) return 0;

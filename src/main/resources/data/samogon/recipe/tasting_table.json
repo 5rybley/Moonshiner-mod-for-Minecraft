@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["AAA"," B ","CDC"],"key":{"A":{"item":"minecraft:oak_planks"},"B":{"item":"minecraft:glass_bottle"},"C":{"item":"minecraft:copper_ingot"},"D":{"item":"minecraft:paper"}},"result":{"id":"samogon:tasting_table","count":1}}

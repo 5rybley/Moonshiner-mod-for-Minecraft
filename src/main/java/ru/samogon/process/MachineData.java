@@ -36,7 +36,28 @@ public final class MachineData {
     public static final int AGING_KIND = 25;
     public static final int STILL_CLEARABLE = 26;
     public static final int BLEND_ADDITIVES = 27;
-    public static final int COUNT = 28;
+    public static final int STILL_FRACTIONAL = 28;
+    public static final int RECTIFY_RUNS = 29;
+    public static final int RECTIFY_RUN = 30;
+    /** Tasting-table readout: 1 when a drink and a hydrometer are both loaded. */
+    public static final int TASTING_VALID = 31;
+    /** Ordinal of the detected {@link SpiritType}. */
+    public static final int TASTING_TYPE = 32;
+    /** Base intoxication level the drink would apply (1..4). */
+    public static final int TASTING_INTOX = 33;
+    /** Intoxication duration in seconds. */
+    public static final int TASTING_DURATION = 34;
+    /** Aura index plus one (0 = no aura). */
+    public static final int TASTING_AURA = 35;
+    /** 1 when the drink is a technical fraction with poison/blindness/weakness. */
+    public static final int TASTING_TECHNICAL = 36;
+    /** 1 when the drink can be drunk as it is. */
+    public static final int TASTING_DRINKABLE = 37;
+    /** Strength (1..5) of the dominant aura. */
+    public static final int TASTING_AURA_LEVEL = 38;
+    /** Number of distinct auras the drink carries (0..5). */
+    public static final int TASTING_AURA_COUNT = 39;
+    public static final int COUNT = 40;
 
     private MachineData() {}
 }

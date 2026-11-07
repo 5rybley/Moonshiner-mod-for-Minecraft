@@ -49,6 +49,9 @@ public final class IntoxicationEvents {
         int peak = Intoxication.peakLevel(player);
         Intoxication.clearCured(player);
         Intoxication.clearBlackoutTimer(player);
+        // Sober again: drop the drink's auras and the hue marker so the next
+        // bottle starts clean and no stale beneficial effect lingers.
+        Intoxication.clearAuras(player);
         if (peak >= 3) {
             applyHangover(player, peak);
         }
@@ -86,7 +89,7 @@ public final class IntoxicationEvents {
         }
 
         int level = Intoxication.level(player);
-        if (level < 3 || player.isCreative() || player.isSpectator()) {
+        if (level < 1 || player.isCreative() || player.isSpectator()) {
             return;
         }
         if (event.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
@@ -124,8 +127,9 @@ public final class IntoxicationEvents {
         }
 
         float chance = Intoxication.blockChance(level);
-        if (player.hasEffect(ModEffects.HONEY_GUARD)) {
-            chance = Math.min(0.45F, chance + 0.10F);
+        int honeyLevel = Intoxication.auraAmplifier(player, "honey");
+        if (honeyLevel >= 0) {
+            chance = Math.min(0.55F, chance + 0.10F + 0.02F * honeyLevel);
         }
 
         if (player.getRandom().nextFloat() < chance) {
@@ -155,8 +159,10 @@ public final class IntoxicationEvents {
             return;
         }
 
-        if (player.hasEffect(ModEffects.OAK_GRIT) && event.getAmount() > 0.0F) {
-            event.setAmount(event.getAmount() * 0.90F);
+        int oakLevel = Intoxication.auraAmplifier(player, "oak");
+        if (oakLevel >= 0 && event.getAmount() > 0.0F) {
+            float keep = Math.max(0.70F, 0.90F - 0.02F * oakLevel);
+            event.setAmount(event.getAmount() * keep);
         }
     }
 
@@ -170,16 +176,18 @@ public final class IntoxicationEvents {
         }
 
         int level = Intoxication.level(player);
-        if (level < 3 || player.isCreative() || player.isSpectator()) {
+        if (level < 1 || player.isCreative() || player.isSpectator()) {
             return;
         }
 
         boolean direct = event.getSource().getDirectEntity() == player;
-        boolean ember = direct && player.hasEffect(ModEffects.SPICED_EMBER);
+        int spiceLevel = Intoxication.auraAmplifier(player, "spice");
+        boolean ember = direct && spiceLevel >= 0;
 
         float multiplier = 1.0F;
-        if (direct && player.hasEffect(ModEffects.BERRY_FURY)) {
-            multiplier += 0.20F + 0.05F * (level - 3);
+        int berryLevel = Intoxication.auraAmplifier(player, "berry");
+        if (direct && berryLevel >= 0) {
+            multiplier += 0.20F + 0.05F * berryLevel;
         }
 
         boolean critical = player.getRandom().nextFloat() < Intoxication.attackChance(level);
@@ -197,7 +205,7 @@ public final class IntoxicationEvents {
 
         // Spiced Ember: the drink itself burns, so even bare fists carry fire.
         if (ember && victim.getRemainingFireTicks() < 60) {
-            victim.setRemainingFireTicks(60);
+            victim.setRemainingFireTicks(60 + 20 * spiceLevel);
             if (victim.level() instanceof ServerLevel server) {
                 server.sendParticles(
                         ParticleTypes.FLAME,

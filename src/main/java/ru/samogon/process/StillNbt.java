@@ -14,6 +14,11 @@ public final class StillNbt {
         tag.putInt("Impurities", run.sourceImpurities);
         tag.putString("Origin", run.origin);
         tag.putInt("Passes", run.passes);
+        tag.putString("Composition", run.composition);
+        tag.putBoolean("Rectified", run.rectified);
+        tag.putInt("Oak", run.oak);
+        tag.putBoolean("Fractional", run.fractional);
+        tag.putInt("ColumnRuns", run.columnRuns);
         tag.putDouble("Temp", run.temperature);
         tag.putDouble("TotalAlcohol", run.totalAlcohol);
         tag.putDouble("Collected", run.alcoholCollected);
@@ -38,6 +43,12 @@ public final class StillNbt {
         run.sourceImpurities = tag.getInt("Impurities");
         run.origin = tag.getString("Origin");
         run.passes = tag.getInt("Passes");
+        run.composition = tag.getString("Composition");
+        run.rectified = tag.getBoolean("Rectified");
+        run.oak = tag.getInt("Oak");
+        // Old still runs always separated fractions.
+        run.fractional = tag.contains("Fractional") ? tag.getBoolean("Fractional") : true;
+        run.columnRuns = tag.getInt("ColumnRuns");
         // Older saves may not contain Temp; starting from 0 makes a loaded still
         // look permanently frozen until the next slow heating tick.
         run.temperature = tag.contains("Temp") ? tag.getDouble("Temp") : 20;

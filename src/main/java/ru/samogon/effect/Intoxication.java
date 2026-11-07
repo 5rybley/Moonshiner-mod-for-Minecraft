@@ -6,6 +6,7 @@ import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
@@ -26,11 +27,14 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import ru.samogon.entity.PukeBlockEntity;
 import ru.samogon.item.BatchItem;
 import ru.samogon.network.BlackoutPayload;
+import ru.samogon.process.AromaFamily;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.registry.ModEffects;
 import ru.samogon.registry.ModSounds;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Shared drunkenness rules: drink dose, five-level scaling, nausea, vomiting,
@@ -57,6 +61,12 @@ public final class Intoxication {
     private static final String PEAK_LEVEL = "samogon:peak_level";
     /** Set by brine so the rest of that session cannot re-arm the hangover. */
     private static final String CURED_SESSION = "samogon:cured_session";
+    /**
+     * Aura -> level map for the current drink. It survives while the player is
+     * intoxicated and is cleared the moment they sober up, so the next drink
+     * starts with a clean slate.
+     */
+    private static final String AURAS = "samogon:auras";
 
     private static final List<Holder<MobEffect>> TINCTURE_AURAS = List.<Holder<MobEffect>>of(
             ModEffects.BERRY_FURY,
@@ -128,6 +138,12 @@ public final class Intoxication {
         }
 
         clearPeak(player);
+        // Brine lowers the level by one. A drink that still leaves the player
+        // tipsy keeps its auras; the last step to sober clears them at once.
+        boolean stillDrunk = player.hasEffect(ModEffects.INTOXICATION);
+        if (!stillDrunk) {
+            clearAuras(player);
+        }
         player.getPersistentData().putBoolean(CURED_SESSION, true);
         player.removeEffect(ModEffects.HANGOVER);
         player.removeEffect(MobEffects.CONFUSION);
@@ -144,6 +160,14 @@ public final class Intoxication {
     }
 
     public static void drink(Player player, Batch batch, BatchItem.Tincture tincture, boolean technical) {
+        drink(player, batch, aurasFor(batch, tincture), technical);
+    }
+
+    /**
+     * Applies one drink with an explicit aura map. The map may hold up to five
+     * auras, each at the strength contributed by the blend.
+     */
+    public static void drink(Player player, Batch batch, Map<String, Integer> auras, boolean technical) {
         if (!(player instanceof ServerPlayer server) || player.level().isClientSide()) {
             return;
         }
@@ -161,22 +185,17 @@ public final class Intoxication {
 
         player.addEffect(new MobEffectInstance(ModEffects.INTOXICATION, duration, nextLevel - 1, false, true, true));
 
-        int flavor = flavorIndex(tincture);
-        if (flavor >= 0) {
-            for (int i = 0; i < TINCTURE_AURAS.size(); i++) {
-                if (i != flavor) {
-                    player.removeEffect(TINCTURE_AURAS.get(i));
-                }
-            }
-            // Same amplifier rule as with intoxication: switching to a weaker
-            // flavour must replace the marker, not merely update it.
-            player.removeEffect(ModEffects.TINCTURE_MARK);
-            player.addEffect(new MobEffectInstance(ModEffects.TINCTURE_MARK, duration, flavor, false, false, false));
-        } else {
-            // A flavourless drink clears the old marker so the next aura
-            // refresh does not keep the previous tincture's affinity alive.
-            player.removeEffect(ModEffects.TINCTURE_MARK);
+        storeAuras(server, auras);
+        int dominant = dominantAuraIndex(auras);
+        player.removeEffect(ModEffects.TINCTURE_MARK);
+        if (dominant >= 0) {
+            // The marker only carries the dominant hue for DrunkVision; the
+            // actual aura strengths live in the persistent aura map above.
+            player.addEffect(new MobEffectInstance(ModEffects.TINCTURE_MARK, duration, dominant, false, false, false));
         }
+        // Apply the auras immediately instead of waiting for the next effect
+        // tick, so the first sip visibly grants every effect.
+        refreshAura(server, nextLevel);
 
         server.displayClientMessage(
                 Component.translatable("message.samogon.intoxication.level", roman(nextLevel)),
@@ -195,13 +214,89 @@ public final class Intoxication {
         }
     }
 
+    /**
+     * Aura strengths a bottle would grant. A blended composition is the source
+     * of truth; the fixed classic tinctures fall back to their single flavour.
+     */
+    public static Map<String, Integer> aurasFor(Batch batch, BatchItem.Tincture tincture) {
+        Map<String, Integer> levels = AromaFamily.auraLevels(batch == null ? "" : batch.composition());
+        if (levels.isEmpty() && tincture != null && tincture != BatchItem.Tincture.NONE) {
+            levels = Map.of(tincture.id(), 1);
+        }
+        return levels;
+    }
+
+    /** Aura id -> level map currently carried by the drinker. */
+    public static Map<String, Integer> storedAuras(Player player) {
+        CompoundTag data = player.getPersistentData();
+        CompoundTag tag = data.getCompound(AURAS);
+        if (tag.isEmpty()) return Map.of();
+        Map<String, Integer> levels = new LinkedHashMap<>();
+        for (String id : AromaFamily.AURAS) {
+            int level = tag.getInt(id);
+            if (level > 0) {
+                levels.put(id, Math.min(AromaFamily.MAX_AURA_LEVEL, level));
+            }
+        }
+        return levels;
+    }
+
+    private static void storeAuras(Player player, Map<String, Integer> auras) {
+        CompoundTag data = player.getPersistentData();
+        if (auras == null || auras.isEmpty()) {
+            data.remove(AURAS);
+            return;
+        }
+        CompoundTag tag = new CompoundTag();
+        for (Map.Entry<String, Integer> entry : auras.entrySet()) {
+            if (auraIndex(entry.getKey()) < 0 || entry.getValue() == null) continue;
+            int level = Math.max(1, Math.min(AromaFamily.MAX_AURA_LEVEL, entry.getValue()));
+            tag.putInt(entry.getKey(), level);
+        }
+        if (tag.isEmpty()) {
+            data.remove(AURAS);
+        } else {
+            data.put(AURAS, tag);
+        }
+    }
+
+    /** Removes every aura effect and forgets the current drink's aura map. */
+    static void clearAuras(Player player) {
+        for (Holder<MobEffect> aura : TINCTURE_AURAS) {
+            player.removeEffect(aura);
+        }
+        player.getPersistentData().remove(AURAS);
+        player.removeEffect(ModEffects.TINCTURE_MARK);
+    }
+
+    /** The strongest aura in the map, in canonical order on a tie. */
+    public static String dominantAura(Map<String, Integer> auras) {
+        if (auras == null || auras.isEmpty()) return null;
+        String best = null;
+        int bestLevel = 0;
+        for (String id : AromaFamily.AURAS) {
+            Integer level = auras.get(id);
+            if (level == null || level <= bestLevel) continue;
+            bestLevel = level;
+            best = id;
+        }
+        return best;
+    }
+
+    private static int dominantAuraIndex(Map<String, Integer> auras) {
+        return auraIndex(dominantAura(auras));
+    }
+
     /** Called by the visible effect every tick. */
     static void tick(ServerPlayer player, int level) {
         if (player.isSpectator() || player.isDeadOrDying()) {
             return;
         }
 
-        boolean botanical = level >= 3 && player.hasEffect(ModEffects.BOTANICAL_CLARITY);
+        // Botanical clarity works from the first sip now; its strength is the
+        // aura level, not the intoxication level.
+        boolean botanical = player.hasEffect(ModEffects.BOTANICAL_CLARITY);
+        int botanicalLevel = auraAmplifier(player, "botanical") + 1;
 
         // Keep nausea active even at level I; higher levels refresh it faster and for longer.
         int nauseaInterval = Math.max(20, 120 - level * 20);
@@ -250,8 +345,9 @@ public final class Intoxication {
         refreshAura(player, level);
         tickBlackout(player, level);
 
-        if (level >= 3 && player.hasEffect(ModEffects.BOTANICAL_CLARITY) && player.tickCount % 100 == 0) {
-            player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0, true, true, true));
+        if (botanical && player.tickCount % 100 == 0) {
+            player.addEffect(new MobEffectInstance(
+                    MobEffects.REGENERATION, 100, botanicalLevel >= 3 ? 1 : 0, true, true, true));
         }
     }
 
@@ -280,7 +376,8 @@ public final class Intoxication {
         return level >= 4 ? 1.0F : 0.0F;
     }
 
-    private static int baseLevel(Batch batch) {
+    /** Base intoxication level a fresh glass of this batch would apply. */
+    public static int baseLevel(Batch batch) {
         int level = 1;
         if (batch.abv() >= 90.0) {
             level += 3;
@@ -320,7 +417,8 @@ public final class Intoxication {
         player.causeFoodExhaustion(2.0F + severity * 0.03F);
     }
 
-    private static int durationTicks(Batch batch) {
+    /** How long one glass of this batch keeps the drinker under the effect, in ticks. */
+    public static int durationTicks(Batch batch) {
         long seconds = 45L
                 + Math.round(batch.alcohol() * 1.4)
                 + batch.impurities() / 5;
@@ -340,51 +438,117 @@ public final class Intoxication {
         };
     }
 
-    private static void refreshAura(ServerPlayer player, int level) {
-        MobEffectInstance mark = player.getEffect(ModEffects.TINCTURE_MARK);
-        int flavor = mark == null ? -1 : mark.getAmplifier();
+    /** Aura index (0..6) granted by the tincture, or -1 when it has none. */
+    public static int auraIndex(BatchItem.Tincture tincture) {
+        return flavorIndex(tincture);
+    }
 
-        if (level < 3 || flavor < 0 || flavor >= TINCTURE_AURAS.size()) {
-            for (Holder<MobEffect> aura : TINCTURE_AURAS) {
-                player.removeEffect(aura);
-            }
-            return;
-        }
+    /** Aura index (0..6) for an aura id, or -1 when the id is unknown. */
+    public static int auraIndex(String auraId) {
+        return auraId == null ? -1 : AromaFamily.AURAS.indexOf(auraId);
+    }
 
-        for (int i = 0; i < TINCTURE_AURAS.size(); i++) {
-            if (i != flavor) {
-                player.removeEffect(TINCTURE_AURAS.get(i));
-            }
-        }
+    /** Translation key of the aura effect at the given index, or "" when none. */
+    public static String auraKey(int index) {
+        return switch (index) {
+            case 0 -> "effect.samogon.berry_fury";
+            case 1 -> "effect.samogon.honey_guard";
+            case 2 -> "effect.samogon.botanical_clarity";
+            case 3 -> "effect.samogon.oak_grit";
+            case 4 -> "effect.samogon.spiced_ember";
+            case 5 -> "effect.samogon.orchard_bloom";
+            case 6 -> "effect.samogon.tidal_breath";
+            default -> "";
+        };
+    }
 
-        Holder<MobEffect> desired = TINCTURE_AURAS.get(flavor);
-        MobEffectInstance active = player.getEffect(desired);
-        if (active == null || active.getDuration() < 40) {
-            player.addEffect(new MobEffectInstance(desired, 60, 0, false, true, true));
-        }
-
-        applyAuraPerk(player, flavor);
+    /** Translation key of the aura effect for an aura id, or "" when unknown. */
+    public static String auraKey(String auraId) {
+        return auraKey(auraIndex(auraId));
     }
 
     /**
-     * Passive perks of the three newer tincture affinities. Spiced Ember works
-     * on the attack itself (see {@code IntoxicationEvents}); these two are slow
-     * background effects that fit their flavour.
+     * Localized list of every aura in a drink, e.g.
+     * "Berry Fury V, Honey Guard I". Used by tooltips and the tasting table.
      */
-    private static void applyAuraPerk(ServerPlayer player, int flavor) {
+    public static Component auraSummary(Map<String, Integer> auras) {
+        if (auras == null || auras.isEmpty()) {
+            return Component.translatable("message.samogon.none");
+        }
+        MutableComponent result = Component.empty();
+        boolean first = true;
+        for (String id : AromaFamily.AURAS) {
+            Integer level = auras.get(id);
+            if (level == null || level <= 0) continue;
+            if (!first) result.append(Component.literal(", "));
+            result.append(Component.translatable(auraKey(id)))
+                    .append(Component.literal(" " + roman(level)));
+            first = false;
+        }
+        return first ? Component.translatable("message.samogon.none") : result;
+    }
+
+    /** Amplifier of the drinker's aura, or -1 when the aura is not active. */
+    public static int auraAmplifier(Player player, String auraId) {
+        int index = auraIndex(auraId);
+        if (index < 0) return -1;
+        MobEffectInstance effect = player.getEffect(TINCTURE_AURAS.get(index));
+        return effect == null ? -1 : effect.getAmplifier();
+    }
+
+    /**
+     * Grants or refreshes every aura stored for the current drink. Auras apply
+     * from the first level of intoxication; their amplifier is the number of
+     * matching additives minus one, so five berries show as level V.
+     */
+    private static void refreshAura(ServerPlayer player, int level) {
+        Map<String, Integer> auras = storedAuras(player);
+        boolean active = level >= 1 && !auras.isEmpty();
+
+        for (int i = 0; i < TINCTURE_AURAS.size(); i++) {
+            if (!active || !auras.containsKey(AromaFamily.AURAS.get(i))) {
+                player.removeEffect(TINCTURE_AURAS.get(i));
+            }
+        }
+        if (!active) {
+            return;
+        }
+
+        for (Map.Entry<String, Integer> entry : auras.entrySet()) {
+            int index = auraIndex(entry.getKey());
+            if (index < 0) continue;
+            int amplifier = Math.min(AromaFamily.MAX_AURA_LEVEL, Math.max(1, entry.getValue())) - 1;
+            Holder<MobEffect> desired = TINCTURE_AURAS.get(index);
+            MobEffectInstance current = player.getEffect(desired);
+            if (current == null || current.getDuration() < 40 || current.getAmplifier() != amplifier) {
+                // A MobEffectInstance update cannot lower the amplifier, so a
+                // weaker aura has to replace the old instance outright.
+                player.removeEffect(desired);
+                player.addEffect(new MobEffectInstance(desired, 60, amplifier, false, true, true));
+            }
+            applyAuraPerk(player, entry.getKey(), amplifier);
+        }
+    }
+
+    /**
+     * Passive perks of the two "slow" affinities. Spiced Ember acts on the
+     * attack itself, berry/honey/oak/botanical are used by the damage events.
+     */
+    private static void applyAuraPerk(ServerPlayer player, String auraId, int amplifier) {
         // Orchard Bloom: fruit sugar slowly refills an empty stomach and keeps
         // a gentle regeneration pulse going.
-        if (flavor == 5 && player.tickCount % 100 == 0) {
+        if ("fruit".equals(auraId) && player.tickCount % 100 == 0) {
             if (player.getFoodData().getFoodLevel() < 20) {
                 player.getFoodData().eat(1, 0.4F);
             }
-            player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 40, 0, true, false, true));
+            player.addEffect(new MobEffectInstance(
+                    MobEffects.REGENERATION, 40, amplifier >= 3 ? 1 : 0, true, false, true));
         }
 
         // Tidal Breath: while in water the drinker simply does not drown.
         // The refresh is throttled, otherwise two effect-update packets would be
         // sent to the client on every single tick spent in water.
-        if (flavor == 6 && player.isInWater()) {
+        if ("marine".equals(auraId) && player.isInWater()) {
             MobEffectInstance breath = player.getEffect(MobEffects.WATER_BREATHING);
             if (breath == null || breath.getDuration() < 40) {
                 player.addEffect(new MobEffectInstance(MobEffects.WATER_BREATHING, 100, 0, true, false, true));
@@ -405,8 +569,9 @@ public final class Intoxication {
         forward = forward.normalize();
 
         float chance = 0.08F + level * 0.035F;
-        if (player.hasEffect(ModEffects.OAK_GRIT)) {
-            chance *= 0.70F;
+        int oakLevel = auraAmplifier(player, "oak");
+        if (oakLevel >= 0) {
+            chance *= Math.max(0.40F, 0.75F - 0.05F * oakLevel);
         }
         if (player.getRandom().nextFloat() >= chance) {
             return;
@@ -619,13 +784,15 @@ public final class Intoxication {
         return feet.getCollisionShape(server, pos).isEmpty() && head.getCollisionShape(server, pos.above()).isEmpty();
     }
 
-    private static String roman(int level) {
+    /** Roman numeral for a 1..5 level; "-" for anything else. */
+    public static String roman(int level) {
         return switch (level) {
             case 1 -> "I";
             case 2 -> "II";
             case 3 -> "III";
             case 4 -> "IV";
-            default -> "V";
+            case 5 -> "V";
+            default -> "-";
         };
     }
 }

@@ -22,6 +22,12 @@ public final class StillRun {
     int sourceImpurities;
     String origin;
     int passes;
+    String composition = "";
+    boolean rectified;
+    int oak;
+    /** True when heads, hearts and tails are collected separately. */
+    boolean fractional = true;
+    int columnRuns;
     double temperature = 20;
     double totalAlcohol;
     double alcoholCollected;
@@ -38,6 +44,10 @@ public final class StillRun {
     Fraction currentFraction = Fraction.HEADS;
 
     public StillRun(Batch wash) {
+        this(wash, true);
+    }
+
+    public StillRun(Batch wash, boolean fractional) {
         if (wash.alcohol() < 1) throw new IllegalArgumentException("Wash contains no alcohol");
         liquidVolume = wash.volume();
         abv = wash.abv();
@@ -45,6 +55,11 @@ public final class StillRun {
         sourceImpurities = wash.impurities();
         origin = wash.origin();
         passes = wash.passes();
+        composition = wash.composition();
+        rectified = wash.rectified();
+        oak = wash.oak();
+        this.fractional = fractional;
+        columnRuns = wash.columnRuns();
         totalAlcohol = wash.alcohol();
     }
 
@@ -98,7 +113,9 @@ public final class StillRun {
         double vapourAbv = Simulation.vapourAbv(abv, plates);
         lastVapourAbv = vapourAbv;
         double progress = totalAlcohol > 0 ? alcoholCollected / totalAlcohol : 0;
-        currentFraction = Simulation.classify(progress, vapourAbv, temperature);
+        currentFraction = fractional
+                ? Simulation.classify(progress, vapourAbv, temperature)
+                : Fraction.HEARTS;
 
         double availableAlcohol = liquidVolume * abv / 100;
         double alcoholOut = Math.min(vapourVolume * vapourAbv / 100, availableAlcohol);
@@ -153,7 +170,11 @@ public final class StillRun {
     public Batch drain(Fraction fraction, int amount) {
         double volume = cutVolume(fraction);
         double alcohol = cutAlcohol(fraction);
-        if (volume <= 0.0001 || alcohol <= 0 || amount <= 0) return null;
+        // A cut can legitimately be almost pure water (0 % ABV) at the very end
+        // of a run. Refusing to drain it stranded the leftover in the still and
+        // destroyed it when the block was broken; Simulation.cutAtAbv accepts
+        // 0 % just fine.
+        if (volume <= 0.0001 || amount <= 0) return null;
         double drained = Math.min(amount, volume);
         double abvOut = alcohol / volume * 100;
         double drainedAlcohol = alcohol * drained / volume;
@@ -172,8 +193,9 @@ public final class StillRun {
             }
         }
         double progress = totalAlcohol > 0 ? Math.min(1, alcoholCollected / totalAlcohol) : 1;
-        Batch source = new Batch(100, abvOut, sourceQuality, sourceImpurities, passes, false, origin, 0);
-        return Simulation.cutAtAbv(source, fraction, abvOut, progress, drained);
+        Batch source = new Batch(100, abvOut, sourceQuality, sourceImpurities, passes, false, origin, 0,
+                composition, rectified, oak, fractional, columnRuns);
+        return Simulation.cutAtAbv(source, fraction, abvOut, progress, drained, fractional);
     }
 
     public double cutVolume(Fraction fraction) {
@@ -239,6 +261,15 @@ public final class StillRun {
 
     public boolean puked() {
         return puked;
+    }
+
+    /** True when the run keeps heads, hearts and tails in separate receivers. */
+    public boolean fractional() {
+        return fractional;
+    }
+
+    public int columnRuns() {
+        return columnRuns;
     }
 
     public boolean consumePukeFlag() {

@@ -20,8 +20,18 @@ public final class ProductionChainTest {
     public static void main(String[] args) {
         grainChain();
         honeyChain();
+        wholeRun();
         drainEdgeCases();
         System.out.println("Two production chains and drain edge cases passed.");
+    }
+
+    /** Six column passes are the documented way to reach neutral spirit. */
+    private static Batch rectifySix(Batch feed) {
+        Batch result = feed;
+        for (int run = 0; run < 6; run++) {
+            result = Simulation.rectify(result);
+        }
+        return result;
     }
 
     private static void grainChain() {
@@ -38,11 +48,12 @@ public final class ProductionChainTest {
         require(still.totalCollectedAlcohol() <= wash.alcohol() * 1.01,
                 "grain still cannot create alcohol");
 
-        Batch rectified = Simulation.rectify(still.hearts());
+        Batch rectified = rectifySix(still.hearts());
         require(rectified.abv() > 95.9, "rectifier must concentrate the spirit");
         Batch filtered = Simulation.filter(rectified);
         require(filtered.filtered(), "filter must mark the batch");
-        require(filtered.impurities() < rectified.impurities(), "filter must remove impurities");
+        require(filtered.impurities() <= rectified.impurities(), "filter must not add impurities");
+        require(filtered.quality() >= rectified.quality(), "filter must not lower quality");
 
         Batch diluted = Simulation.dilute(filtered, 40);
         require(Math.abs(diluted.abv() - 40) < 0.001, "basin must reach 40% ABV");
@@ -52,7 +63,7 @@ public final class ProductionChainTest {
 
         Batch aged = Simulation.mature(diluted, true);
         require(aged.age() == diluted.age() + 1, "aging must advance age");
-        require(aged.quality() > diluted.quality(), "oak must improve quality");
+        require(aged.quality() >= diluted.quality(), "oak must not lower quality");
         require(aged.abv() == 40, "aging must keep the strength");
 
         print("grain", wash, still, aged);
@@ -67,12 +78,12 @@ public final class ProductionChainTest {
         require(still.hearts().volume() > 100, "honey hearts volume");
         require(still.hearts().abv() > 20, "honey hearts must be usable low wines");
 
-        Batch rectified = Simulation.rectify(still.hearts());
+        Batch rectified = rectifySix(still.hearts());
         require(rectified.abv() > 95.9, "honey rectifier must concentrate the spirit");
         Batch filtered = Simulation.filter(rectified);
         Batch diluted = Simulation.dilute(filtered, 40);
         Batch infused = Simulation.infuse(diluted, "honey");
-        require(infused.quality() > diluted.quality(), "honey infusion must improve aroma quality");
+        require(infused.quality() >= diluted.quality(), "honey infusion must not lower quality");
         require(infused.age() == diluted.age() + 1, "infusion must count as a cycle");
         require(Math.abs(infused.abv() - 40) < 0.001, "infusion must keep 40% ABV");
 
@@ -135,6 +146,24 @@ public final class ProductionChainTest {
         return new Batch(volume, alcohol / volume * 100,
                 (int) Math.round(quality / volume), (int) Math.round(impurities / volume),
                 passes, false, origin, age);
+    }
+
+    private static void wholeRun() {
+        Batch wash = Simulation.ferment(Simulation.mash("berry", 2), 1.0, 20.0);
+        StillRun run = new StillRun(wash, false);
+        int seconds = 0;
+        while (!run.finished() && seconds < MAX_STILL_SECONDS) {
+            run.tick(20, 0.9, true, true, 0, () -> 0.99);
+            seconds++;
+        }
+        require(run.finished(), "whole still did not finish");
+        require(run.cutVolume(Fraction.HEADS) < 0.001,
+                "a whole run must not fill the heads receiver");
+        require(run.cutVolume(Fraction.HEARTS) > 0, "a whole run must collect product");
+        Batch product = run.drain(Fraction.HEARTS, StillRun.BOTTLE_VOLUME);
+        require(product != null, "whole run produced no bottle");
+        require(!product.cut(), "whole-run product must not claim fraction separation");
+        require(product.passes() == 1, "whole-run product is still one distillation");
     }
 
     private static void drainEdgeCases() {

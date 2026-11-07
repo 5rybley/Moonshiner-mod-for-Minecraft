@@ -10,9 +10,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import ru.samogon.block.ProcessBlock;
+import ru.samogon.effect.Intoxication;
 import ru.samogon.menu.ProcessMenu;
 import ru.samogon.process.MachineData;
+import ru.samogon.process.Quality;
 import ru.samogon.process.Simulation.Fraction;
+import ru.samogon.process.SpiritType;
 import ru.samogon.registry.ModBlocks;
 
 import java.util.Locale;
@@ -64,6 +67,8 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
     private ParchmentButton receiverButton;
     private ParchmentButton clearButton;
     private ParchmentButton blendButton;
+    private ParchmentButton fractionalButton;
+    private ParchmentButton runsButton;
 
     public ProcessScreen(ProcessMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -86,6 +91,19 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
                     button -> sendMenuButton(1),
                     Component.translatable("gui.samogon.button.clear.tooltip"));
             addRenderableWidget(clearButton);
+
+            fractionalButton = new ParchmentButton(leftPos + 278, topPos + 56, 88, 20,
+                    Component.translatable("gui.samogon.button.fractions"),
+                    button -> sendMenuButton(3),
+                    Component.translatable("gui.samogon.button.fractions.tooltip"));
+            addRenderableWidget(fractionalButton);
+        }
+        if (menu.kind() == ProcessBlock.Kind.RECTIFIER) {
+            runsButton = new ParchmentButton(leftPos + 278, topPos + 10, 88, 20,
+                    Component.translatable("gui.samogon.button.runs", 1),
+                    button -> sendMenuButton(4),
+                    Component.translatable("gui.samogon.button.runs.tooltip"));
+            addRenderableWidget(runsButton);
         }
         if (menu.kind() == ProcessBlock.Kind.BLENDING) {
             blendButton = new ParchmentButton(leftPos + 278, topPos + 10, 88, 20,
@@ -101,6 +119,18 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
         super.containerTick();
         if (receiverButton != null && clearButton != null) {
             clearButton.active = menu.data(MachineData.STILL_CLEARABLE) == 1;
+            receiverButton.active = menu.data(MachineData.STILL_FRACTIONAL) == 1;
+        }
+        if (fractionalButton != null) {
+            boolean frac = menu.data(MachineData.STILL_FRACTIONAL) == 1;
+            fractionalButton.setMessage(Component.translatable(
+                    frac ? "gui.samogon.button.fractions" : "gui.samogon.button.whole"));
+            fractionalButton.active = menu.data(MachineData.STILL_PRESENT) == 0;
+        }
+        if (runsButton != null) {
+            runsButton.setMessage(Component.translatable("gui.samogon.button.runs",
+                    menu.data(MachineData.RECTIFY_RUNS)));
+            runsButton.active = menu.data(MachineData.STAGE) <= 1;
         }
         if (blendButton != null) {
             blendButton.active = menu.data(MachineData.STAGE) == 1 && menu.additiveCount() > 0;
@@ -128,11 +158,16 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
         graphics.renderItem(icon(), x + 24, y + 18);
         graphics.drawString(font, title.copy().withStyle(ChatFormatting.BOLD),
                 x + 52, y + 15, INK, false);
+
+        boolean tasting = menu.kind() == ProcessBlock.Kind.TASTING;
         drawState(graphics, x + 16, y + 42);
-        drawProgress(graphics, x + 16, y + 55, 148, 7, accent);
+        // The tasting table has no process, so the progress trough stays empty.
+        if (!tasting) drawProgress(graphics, x + 16, y + 55, 148, 7, accent);
 
         if (menu.kind() == ProcessBlock.Kind.DISTILLER) {
             drawDistillerMetrics(graphics, x, y);
+        } else if (tasting) {
+            drawTastingMetrics(graphics, x, y);
         } else {
             drawBatchMetrics(graphics, x, y);
         }
@@ -141,10 +176,13 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
         centered(graphics, slotInputLabel(),
                 x + ProcessMenu.inputX(menu.kind()) + 8, y + 146, COPPER_DARK);
         centered(graphics, Component.translatable(blending
-                        ? "gui.samogon.slot.additives" : "gui.samogon.slot.additive"),
+                        ? "gui.samogon.slot.additives"
+                        : tasting ? "gui.samogon.slot.hydrometer" : "gui.samogon.slot.additive"),
                 x + (blending ? 184 : 189), y + 146, COPPER_DARK);
-        centered(graphics, Component.translatable("gui.samogon.slot.output"),
-                x + ProcessMenu.outputX(menu.kind()) + 8, y + 146, COPPER_DARK);
+        if (!tasting) {
+            centered(graphics, Component.translatable("gui.samogon.slot.output"),
+                    x + ProcessMenu.outputX(menu.kind()) + 8, y + 146, COPPER_DARK);
+        }
         centered(graphics, Component.translatable("gui.samogon.inventory"),
                 x + 190, y + 165, SOFT);
     }
@@ -165,6 +203,10 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
             tooltip = clearButton.tooltip();
         } else if (isOver(blendButton, mouseX, mouseY)) {
             tooltip = blendButton.tooltip();
+        } else if (isOver(fractionalButton, mouseX, mouseY)) {
+            tooltip = fractionalButton.tooltip();
+        } else if (isOver(runsButton, mouseX, mouseY)) {
+            tooltip = runsButton.tooltip();
         } else if (hoveredSlot != null && hoveredSlot.index <= ProcessMenu.SLOT_OUTPUT
                 && !hoveredSlot.hasItem() && menu.getCarried().isEmpty()) {
             tooltip = slotHint(hoveredSlot.index);
@@ -175,6 +217,13 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
     }
 
     private void drawState(GuiGraphics graphics, int x, int y) {
+        if (menu.kind() == ProcessBlock.Kind.TASTING) {
+            boolean valid = menu.data(MachineData.TASTING_VALID) == 1;
+            graphics.drawString(font, "\u25cf", x, y, valid ? GREEN : FAINT, false);
+            graphics.drawString(font, Component.translatable(valid
+                    ? "gui.samogon.tasting.ready" : "gui.samogon.state.empty"), x + 10, y, INK, false);
+            return;
+        }
         int stage = menu.data(MachineData.STAGE);
         boolean ready = menu.data(MachineData.READY) == 1;
         boolean active = menu.data(MachineData.ACTIVE) == 1;
@@ -238,14 +287,16 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
         metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP + METRIC_STEP,
                 "gui.samogon.metric.ambient", f1(ambient));
         metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP + METRIC_STEP * 2,
-                "gui.samogon.metric.quality", volume > 0 ? Integer.toString(quality) : "\u2014");
+                "gui.samogon.metric.quality", volume > 0 ? Quality.bar(quality) : "\u2014");
         metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP + METRIC_STEP * 2,
                 "gui.samogon.metric.heat", Integer.toString(heat));
 
         int extraY = y + METRIC_TOP + METRIC_STEP * 3;
         switch (menu.kind()) {
             case RECTIFIER -> metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, extraY,
-                    "gui.samogon.metric.sieve",
+                    "gui.samogon.metric.rectify",
+                    menu.data(MachineData.RECTIFY_RUN),
+                    menu.data(MachineData.RECTIFY_RUNS),
                     menu.data(MachineData.SIEVE) == 1
                             ? Component.translatable("message.samogon.yes")
                             : Component.translatable("message.samogon.no"));
@@ -273,6 +324,84 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
                 "gui.samogon.metric.impurities", volume > 0 ? Integer.toString(impurities) : "\u2014");
     }
 
+    /**
+     * The tasting table reads a bottle instead of running a process: type,
+     * strength, quality and impurities on the left, and what drinking it would
+     * do on the right (intoxication, duration, aura and technical debuffs).
+     */
+    private void drawTastingMetrics(GuiGraphics graphics, int x, int y) {
+        if (menu.data(MachineData.TASTING_VALID) == 0) {
+            graphics.drawString(font, Component.translatable("gui.samogon.tasting.empty"),
+                    x + METRIC_LEFT, y + METRIC_TOP, FAINT, false);
+            return;
+        }
+        int volume = menu.data(MachineData.BATCH_VOLUME);
+        int abv = menu.data(MachineData.BATCH_ABV);
+        int quality = menu.data(MachineData.BATCH_QUALITY);
+        int impurities = menu.data(MachineData.BATCH_IMPURITIES);
+        int aura = menu.data(MachineData.TASTING_AURA);
+        int auraLevel = menu.data(MachineData.TASTING_AURA_LEVEL);
+        int auraCount = menu.data(MachineData.TASTING_AURA_COUNT);
+        boolean technical = menu.data(MachineData.TASTING_TECHNICAL) == 1;
+        boolean drinkable = menu.data(MachineData.TASTING_DRINKABLE) == 1;
+
+        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP,
+                "gui.samogon.metric.type", Component.translatable(spiritType().translationKey()));
+        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP,
+                "gui.samogon.metric.volume", Integer.toString(volume));
+        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP + METRIC_STEP,
+                "gui.samogon.metric.abv", f1(abv));
+        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP + METRIC_STEP,
+                "gui.samogon.metric.intoxication",
+                roman(menu.data(MachineData.TASTING_INTOX)));
+        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP + METRIC_STEP * 2,
+                "gui.samogon.metric.quality", Quality.bar(quality));
+        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP + METRIC_STEP * 2,
+                "gui.samogon.metric.duration",
+                Integer.toString(menu.data(MachineData.TASTING_DURATION)));
+        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP + METRIC_STEP * 3,
+                "gui.samogon.metric.impurities", Integer.toString(impurities));
+        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP + METRIC_STEP * 3,
+                "gui.samogon.metric.aura", auraText(aura, auraLevel, auraCount));
+        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP + METRIC_STEP * 4,
+                "gui.samogon.metric.drinkable", Component.translatable(drinkable
+                        ? "message.samogon.yes" : "message.samogon.no"));
+        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP + METRIC_STEP * 4,
+                "gui.samogon.metric.technical", Component.translatable(technical
+                        ? "message.samogon.yes" : "message.samogon.no"));
+    }
+
+    private SpiritType spiritType() {
+        SpiritType[] values = SpiritType.values();
+        return values[Math.floorMod(menu.data(MachineData.TASTING_TYPE), values.length)];
+    }
+
+    private static String roman(int level) {
+        return switch (Math.max(0, Math.min(5, level))) {
+            case 0 -> "-";
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            default -> "V";
+        };
+    }
+
+    /** The dominant aura with its level and a "+n" hint for the other auras. */
+    private static Component auraText(int aura, int level, int count) {
+        if (aura <= 0) {
+            return Component.translatable("message.samogon.none");
+        }
+        var text = Component.translatable(Intoxication.auraKey(aura - 1)).copy();
+        if (level > 0) {
+            text.append(Component.literal(" " + roman(level)));
+        }
+        if (count > 1) {
+            text.append(Component.literal(" +" + (count - 1)));
+        }
+        return text;
+    }
+
     private void drawDistillerMetrics(GuiGraphics graphics, int x, int y) {
         int stillTemp = menu.data(MachineData.STILL_TEMPERATURE);
         int stillAbv = menu.data(MachineData.STILL_ABV);
@@ -281,6 +410,10 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
         int coolant = menu.data(MachineData.COOLANT_MINUTES);
         Fraction receiver = menu.receiver();
         boolean present = menu.data(MachineData.STILL_PRESENT) == 1;
+        boolean fractional = menu.data(MachineData.STILL_FRACTIONAL) == 1;
+        Component receiverValue = fractional
+                ? Component.translatable("fraction.samogon." + receiver.id())
+                : Component.translatable("gui.samogon.mode.whole");
 
         metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP,
                 "gui.samogon.metric.pot", present ? f1(stillTemp) : "\u2014");
@@ -293,8 +426,7 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
         metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP + METRIC_STEP * 2,
                 "gui.samogon.metric.coolant", Integer.toString(coolant));
         metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP + METRIC_STEP * 2,
-                "gui.samogon.metric.receiver",
-                Component.translatable("fraction.samogon." + receiver.id()));
+                "gui.samogon.metric.receiver", receiverValue);
 
         graphics.drawString(font, Component.translatable("gui.samogon.metric.cuts",
                         menu.data(MachineData.HEADS_VOLUME),
@@ -304,7 +436,7 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
     }
 
     private void metric(GuiGraphics graphics, int labelX, int valueRight, int y,
-                        String key, Object value) {
+                        String key, Object... value) {
         String[] pair = splitLabel(Component.translatable(key, value).getString());
         if (pair == null) {
             graphics.drawString(font, Component.translatable(key, value),
@@ -339,15 +471,20 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
     }
 
     private Component slotInputLabel() {
-        return Component.translatable(menu.kind() == ProcessBlock.Kind.MASHING
-                ? "gui.samogon.slot.raw" : "gui.samogon.slot.batch");
+        if (menu.kind() == ProcessBlock.Kind.MASHING) return Component.translatable("gui.samogon.slot.raw");
+        if (menu.kind() == ProcessBlock.Kind.TASTING) return Component.translatable("gui.samogon.slot.drink");
+        return Component.translatable("gui.samogon.slot.batch");
     }
 
     private Component slotHint(int slot) {
         if (slot == ProcessMenu.SLOT_INPUT) {
-            return Component.translatable("gui.samogon.slot.input.tooltip");
+            return Component.translatable(menu.kind() == ProcessBlock.Kind.TASTING
+                    ? "gui.samogon.slot.drink.tooltip" : "gui.samogon.slot.input.tooltip");
         }
         if (slot >= ProcessMenu.SLOT_ADDITIVE && slot <= ProcessMenu.SLOT_ADDITIVE_LAST) {
+            if (menu.kind() == ProcessBlock.Kind.TASTING) {
+                return Component.translatable("gui.samogon.slot.hydrometer.tooltip");
+            }
             return Component.translatable(menu.kind() == ProcessBlock.Kind.BLENDING
                     ? "gui.samogon.slot.additives.tooltip" : "gui.samogon.slot.additive.tooltip");
         }
@@ -395,6 +532,7 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
             case BLENDING -> 0xFF8D4A68;
             case DILUTION -> 0xFF4F7694;
             case AGING -> 0xFFA47A2D;
+            case TASTING -> 0xFF7A4E8C;
         };
     }
 
@@ -408,6 +546,7 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
             case BLENDING -> ModBlocks.BLENDING_TABLE.get();
             case DILUTION -> ModBlocks.DILUTION_BASIN.get();
             case AGING -> ModBlocks.AGING_CASK.get();
+            case TASTING -> ModBlocks.TASTING_TABLE.get();
         });
     }
 

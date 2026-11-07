@@ -27,6 +27,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import ru.samogon.effect.Intoxication;
 import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
 import ru.samogon.menu.ProcessMenu;
@@ -34,9 +35,11 @@ import ru.samogon.process.BatchNbt;
 import ru.samogon.process.BlendCatalog;
 import ru.samogon.process.Environment;
 import ru.samogon.process.MachineData;
+import ru.samogon.process.Quality;
 import ru.samogon.process.Simulation;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.process.Simulation.Fraction;
+import ru.samogon.process.SpiritType;
 import ru.samogon.process.StillNbt;
 import ru.samogon.process.StillRun;
 import ru.samogon.registry.ModBlocks;
@@ -46,6 +49,7 @@ import ru.samogon.registry.ModSounds;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Shared block entity for every processing machine. The state machine is
@@ -97,7 +101,7 @@ public final class ProcessBlockEntity extends BlockEntity {
     private final ContainerData machineData = new ContainerData() {
         @Override
         public int get(int index) {
-            Batch b = batch;
+            Batch b = kind() == ProcessBlock.Kind.TASTING ? tastingBatch : batch;
             StillRun s = still;
             return switch (index) {
                 case MachineData.STAGE -> stage;
@@ -129,6 +133,19 @@ public final class ProcessBlockEntity extends BlockEntity {
                 case MachineData.STILL_CLEARABLE ->
                         s != null && s.finished() && totalCuts() <= 0.0001 ? 1 : 0;
                 case MachineData.BLEND_ADDITIVES -> additiveCount();
+                case MachineData.STILL_FRACTIONAL ->
+                        (s != null ? s.fractional() : fractional) ? 1 : 0;
+                case MachineData.RECTIFY_RUNS -> columnRunsTarget;
+                case MachineData.RECTIFY_RUN -> b == null ? 0 : b.columnRuns();
+                case MachineData.TASTING_VALID -> tastingValid ? 1 : 0;
+                case MachineData.TASTING_TYPE -> tastingType;
+                case MachineData.TASTING_INTOX -> tastingIntox;
+                case MachineData.TASTING_DURATION -> tastingDuration;
+                case MachineData.TASTING_AURA -> tastingAura;
+                case MachineData.TASTING_AURA_LEVEL -> tastingAuraLevel;
+                case MachineData.TASTING_AURA_COUNT -> tastingAuraCount;
+                case MachineData.TASTING_TECHNICAL -> tastingTechnical;
+                case MachineData.TASTING_DRINKABLE -> tastingDrinkable;
                 default -> 0;
             };
         }
@@ -165,6 +182,28 @@ public final class ProcessBlockEntity extends BlockEntity {
     private String agingKind = "";
     private String blendComposition = "";
     private Fraction receiver = Fraction.HEARTS;
+    /** Pot-still mode chosen before charging: separate fractions or run whole. */
+    private boolean fractional = true;
+    /** Column passes requested in the GUI (1..6). */
+    private int columnRunsTarget = 1;
+    /** Passes still to perform for the currently loaded rectifier charge. */
+    private int columnRunsLeft;
+    /**
+     * The tasting table never runs a process: it only reads a bottle with a
+     * hydrometer. Its batch is kept apart from the process batch so breaking
+     * the table cannot bottle a phantom duplicate of the sample.
+     */
+    private Batch tastingBatch;
+    private boolean tastingValid;
+    private int tastingType;
+    private int tastingIntox;
+    private int tastingDuration;
+    private int tastingAura;
+    private int tastingAuraLevel;
+    private int tastingAuraCount;
+    private int tastingTechnical;
+    private int tastingDrinkable;
+    private Map<String, Integer> tastingAuras = Map.of();
 
     public ProcessBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlocks.PROCESS_BLOCK_ENTITY.get(), pos, state);
@@ -259,15 +298,67 @@ public final class ProcessBlockEntity extends BlockEntity {
             case BLENDING -> ModItems.SAMOGON.get();
             case DILUTION -> ModItems.DILUTED_SPIRIT.get();
             case AGING -> ModItems.OAK_AGED_SPIRIT.get();
+            // The tasting table never bottles anything: the sample stays on it.
+            case TASTING -> null;
         };
     }
 
     public boolean cycleReceiver() {
         if (kind() != ProcessBlock.Kind.DISTILLER) return false;
+        // A whole run collects everything in one receiver, so cycling is meaningless.
+        if (still != null && !still.fractional()) return false;
         receiver = receiver == Fraction.HEADS ? Fraction.HEARTS
                 : receiver == Fraction.HEARTS ? Fraction.TAILS : Fraction.HEADS;
         setChanged();
         return true;
+    }
+
+    /**
+     * Switches the pot still between a fractional run (heads / hearts / tails)
+     * and a single whole run. The choice is locked while a charge is loaded.
+     */
+    public boolean toggleFractional() {
+        if (kind() != ProcessBlock.Kind.DISTILLER || still != null) return false;
+        fractional = !fractional;
+        if (!fractional) receiver = Fraction.HEARTS;
+        setChanged();
+        return true;
+    }
+
+    public boolean isFractional() {
+        return still != null ? still.fractional() : fractional;
+    }
+
+    /** Cycles the desired number of passes through the rectification column. */
+    public boolean cycleColumnRuns() {
+        if (kind() != ProcessBlock.Kind.RECTIFIER || stage == 3) return false;
+        int next = columnRunsTarget >= 6 ? 1 : columnRunsTarget + 1;
+        // Shortening the run can leave an already loaded sieve with no usable
+        // pass. Hand it back rather than destroying it at the end of the run.
+        if (sieve && batch != null && batch.columnRuns() + next < 4) {
+            sieve = false;
+            if (level != null && !level.isClientSide) {
+                Block.popResource(level, worldPosition, new ItemStack(ModItems.MOLECULAR_SIEVE.get()));
+            }
+        }
+        columnRunsTarget = next;
+        setChanged();
+        return true;
+    }
+
+    /** True when the requested passes will actually reach the sieve's 4th run. */
+    private boolean canUseSieve() {
+        return batch != null && batch.columnRuns() + columnRunsTarget >= 4;
+    }
+
+    public int columnRunsTarget() {
+        return columnRunsTarget;
+    }
+
+    /** The receiver that actually collects product for the current mode. */
+    private Fraction effectiveReceiver() {
+        if (still != null && !still.fractional()) return Fraction.HEARTS;
+        return receiver;
     }
 
     public boolean clearStill() {
@@ -398,13 +489,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             return true;
         }
 
-        if (batch.abv() < 20 || batch.abv() > 60) {
-            if (player != null) {
-                player.displayClientMessage(Component.translatable("message.samogon.strength_range"), true);
-            }
-            return false;
-        }
-
         blendComposition = BlendCatalog.encode(additives);
         for (int slot : filledSlots) {
             ItemStack stack = inventory.getItem(slot);
@@ -462,6 +546,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             case BLENDING -> tickBlending();
             case DILUTION -> tickDilution();
             case AGING -> tickAging();
+            case TASTING -> refreshTasting();
         }
         updateTemperature();
         updateVisualState();
@@ -478,6 +563,9 @@ public final class ProcessBlockEntity extends BlockEntity {
      * item. Hand interactions remain available for players who prefer them.
      */
     private void processAutomation() {
+        // The tasting table only reads the sample. Its input must stay in place,
+        // so the shared load/consume automation has nothing to do here.
+        if (kind() == ProcessBlock.Kind.TASTING) return;
         if (kind() == ProcessBlock.Kind.DISTILLER) {
             fillCoolantFromSlot();
             if (coolant <= 0) pullCoolantFromCondensers(COOLANT_PER_BUCKET);
@@ -497,8 +585,11 @@ public final class ProcessBlockEntity extends BlockEntity {
     private void fillCoolantFromSlot() {
         ItemStack additive = inventory.getItem(SLOT_ADDITIVE);
         if (!additive.is(Items.WATER_BUCKET) || coolant >= MAX_COOLANT) return;
+        // Leave the bucket in the slot until the whole charge fits: accepting
+        // a partial amount and still consuming the bucket destroyed water.
+        if (MAX_COOLANT - coolant < COOLANT_PER_BUCKET) return;
         consumeSlot(SLOT_ADDITIVE);
-        coolant = Math.min(MAX_COOLANT, coolant + COOLANT_PER_BUCKET);
+        coolant += COOLANT_PER_BUCKET;
         returnContainer(Items.BUCKET);
     }
 
@@ -544,6 +635,30 @@ public final class ProcessBlockEntity extends BlockEntity {
                 } else if (stack.is(Items.HONEY_BOTTLE)) {
                     origin = "honey";
                     bonus = 6;
+                } else if (stack.is(Items.POTATO)) {
+                    origin = "potato";
+                    bonus = -2;
+                } else if (stack.is(Items.BEETROOT)) {
+                    origin = "beetroot";
+                    bonus = 0;
+                } else if (stack.is(Items.SUGAR_CANE)) {
+                    origin = "cane";
+                    bonus = 1;
+                } else if (stack.is(Items.APPLE)) {
+                    origin = "apple";
+                    bonus = 3;
+                } else if (stack.is(Items.COCOA_BEANS)) {
+                    origin = "cocoa";
+                    bonus = 0;
+                } else if (stack.is(Items.MELON_SLICE)) {
+                    origin = "melon";
+                    bonus = 1;
+                } else if (stack.is(Items.CARROT)) {
+                    origin = "carrot";
+                    bonus = 2;
+                } else if (stack.is(Items.CACTUS)) {
+                    origin = "cactus";
+                    bonus = 1;
                 }
                 if (origin == null) return false;
                 batch = Simulation.mash(origin, bonus);
@@ -577,7 +692,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 settle = 0;
                 announcedDone = false;
                 receiver = Fraction.HEARTS;
-                still = new StillRun(wash);
+                still = new StillRun(wash, fractional);
                 active = false;
                 return true;
             }
@@ -589,13 +704,14 @@ public final class ProcessBlockEntity extends BlockEntity {
                 progress = 0;
                 duration = 0;
                 settle = 0;
+                columnRunsLeft = 0;
                 sieve = false;
                 active = false;
                 return true;
             }
             case FILTER -> {
                 Batch feed = readBatch(stack);
-                if (feed == null || feed.abv() < 1 || feed.filtered()) return false;
+                if (feed == null || feed.abv() < 1) return false;
                 batch = feed;
                 stage = 1;
                 progress = 0;
@@ -605,7 +721,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             }
             case BLENDING -> {
                 Batch feed = readBatch(stack);
-                if (feed == null || feed.abv() < 20 || feed.abv() > 60) return false;
+                if (feed == null) return false;
                 batch = feed;
                 stage = 1;
                 progress = 0;
@@ -628,13 +744,17 @@ public final class ProcessBlockEntity extends BlockEntity {
             }
             case AGING -> {
                 Batch feed = readBatch(stack);
-                if (feed == null || feed.abv() < 20 || feed.abv() > 60) return false;
+                if (feed == null || !Simulation.canAge(feed.abv())) return false;
                 batch = feed;
                 stage = 1;
                 progress = 0;
                 duration = 0;
                 active = false;
                 return true;
+            }
+            // The tasting table keeps its sample in the slot; it is never
+            // consumed into the process batch.
+            case TASTING -> {
             }
         }
         return false;
@@ -661,6 +781,10 @@ public final class ProcessBlockEntity extends BlockEntity {
                 // the additive slot was eaten one item per tick while the
                 // column was heating up.
                 if (sieve || batch == null || !additive.is(ModItems.MOLECULAR_SIEVE.get())) return;
+                // The sieve only fires on the 4th run. Consuming it for a
+                // shorter run wasted the item, so leave it in the slot until
+                // the player asks for enough passes.
+                if (!canUseSieve()) return;
                 consumeSlot(SLOT_ADDITIVE);
                 sieve = true;
             }
@@ -693,7 +817,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 progress = 0;
                 duration = AGE_TICKS;
             }
-            case MASHING, DISTILLER -> {
+            case MASHING, DISTILLER, TASTING -> {
                 return;
             }
         }
@@ -747,7 +871,7 @@ public final class ProcessBlockEntity extends BlockEntity {
 
         if (kind() == ProcessBlock.Kind.DISTILLER) {
             if (still == null || !still.finished()) return;
-            Fraction chosen = receiver;
+            Fraction chosen = effectiveReceiver();
             double available = still.cutVolume(chosen);
             if (available <= 0.0001) return;
             int amount = (int) Math.min(BOTTLE, Math.ceil(available));
@@ -782,7 +906,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             case BLENDING -> blendOutput();
             case DILUTION -> ModItems.DILUTED_SPIRIT.get();
             case AGING -> ModItems.OAK_AGED_SPIRIT.get();
-            case DISTILLER -> null;
+            case DISTILLER, TASTING -> null;
         };
     }
 
@@ -955,6 +1079,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 // and finished on the first tick instead of running for a minute.
                 duration = RECTIFY_TICKS;
                 settle = 0;
+                columnRunsLeft = Math.max(1, columnRunsTarget);
                 notifyNearby("message.samogon.rectifying");
             }
             active = false;
@@ -979,21 +1104,22 @@ public final class ProcessBlockEntity extends BlockEntity {
         active = true;
         progress++;
         if (progress >= duration) {
-            Batch rectified = Simulation.rectify(batch);
-            if (sieve) {
-                // The sieve strips water, not alcohol: keep the alcohol mass
-                // and shrink the volume instead of turning the same volume into
-                // a stronger spirit out of thin air.
-                double alcohol = rectified.alcohol();
-                double volume = Math.min(rectified.volume(), alcohol / 0.995);
-                double abv = volume <= 0 ? rectified.abv()
-                        : Math.min(99.5, alcohol * 100.0 / volume);
-                rectified = new Batch(volume, abv, Simulation.clamp(rectified.quality() + 2),
-                        Math.max(0, rectified.impurities() - 2), rectified.passes(),
-                        rectified.filtered(), rectified.origin(), rectified.age(),
-                        rectified.composition());
+            int nextRun = batch.columnRuns() + 1;
+            boolean lastRun = columnRunsLeft <= 1;
+            // The molecular sieve only helps once the column has already been
+            // run four times; before that the spirit is still too wet.
+            boolean useSieve = sieve && lastRun && nextRun >= 4;
+            batch = Simulation.rectify(batch, useSieve);
+            columnRunsLeft--;
+            if (columnRunsLeft > 0) {
+                progress = 0;
+                duration = RECTIFY_TICKS;
+                setChanged();
+                notifyNearby("message.samogon.rectify.run",
+                        batch.columnRuns(), columnRunsTarget, f(batch.abv()));
+                burst(ParticleTypes.CLOUD, 8, 0.2, 0.01);
+                return;
             }
-            batch = rectified;
             sieve = false;
             stage = 4;
             active = false;
@@ -1015,14 +1141,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             return;
         }
         if (duration <= 0) duration = FILTER_TICKS;
-        if (batch.filtered()) {
-            stage = 4;
-            active = false;
-            progress = duration;
-            setChanged();
-            notifyNearby("message.samogon.filter.ready");
-            return;
-        }
         active = true;
         progress++;
         if (progress >= duration) {
@@ -1255,6 +1373,8 @@ public final class ProcessBlockEntity extends BlockEntity {
                     1, 0.3, 0.05, 0.3, 0.015);
             case AGING -> server.sendParticles(ParticleTypes.FALLING_HONEY, x, y + 0.9, z,
                     1, 0.2, 0.02, 0.2, 0.0);
+            case TASTING -> {
+            }
         }
     }
 
@@ -1268,6 +1388,12 @@ public final class ProcessBlockEntity extends BlockEntity {
 
     public InteractionResult interact(Player player, InteractionHand hand, ItemStack stack) {
         if (level == null || level.isClientSide) return InteractionResult.SUCCESS;
+        // On the tasting table the hydrometer is a sample, not a gauge pointed at
+        // a running process, so this branch comes before the generic tool checks.
+        if (kind() == ProcessBlock.Kind.TASTING) {
+            setChanged();
+            return useTasting(player, hand, stack);
+        }
         if (stack.is(ModItems.THERMOMETER.get())) {
             reportTemperature(player);
             return InteractionResult.SUCCESS;
@@ -1289,6 +1415,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             case BLENDING -> useBlending(player, hand, stack);
             case DILUTION -> useDilution(player, hand, stack);
             case AGING -> useAging(player, hand, stack);
+            case TASTING -> useTasting(player, hand, stack);
         };
         setChanged();
         return result;
@@ -1314,6 +1441,30 @@ public final class ProcessBlockEntity extends BlockEntity {
                 origin = "honey";
                 bonus = 6;
                 container = Items.GLASS_BOTTLE;
+            } else if (stack.is(Items.POTATO)) {
+                origin = "potato";
+                bonus = -2;
+            } else if (stack.is(Items.BEETROOT)) {
+                origin = "beetroot";
+                bonus = 0;
+            } else if (stack.is(Items.SUGAR_CANE)) {
+                origin = "cane";
+                bonus = 1;
+            } else if (stack.is(Items.APPLE)) {
+                origin = "apple";
+                bonus = 3;
+            } else if (stack.is(Items.COCOA_BEANS)) {
+                origin = "cocoa";
+                bonus = 0;
+            } else if (stack.is(Items.MELON_SLICE)) {
+                origin = "melon";
+                bonus = 1;
+            } else if (stack.is(Items.CARROT)) {
+                origin = "carrot";
+                bonus = 2;
+            } else if (stack.is(Items.CACTUS)) {
+                origin = "cactus";
+                bonus = 1;
             }
             if (origin != null) {
                 consume(player, stack, container);
@@ -1382,11 +1533,16 @@ public final class ProcessBlockEntity extends BlockEntity {
         // Allow filling the condenser before loading a wash; the coolant is kept
         // when the pot is charged.
         if (stack.is(Items.WATER_BUCKET)) {
-            if (coolant >= MAX_COOLANT) {
-                player.displayClientMessage(Component.translatable("message.samogon.coolant_full"), true);
+            // As with the standalone condenser, refuse a bucket that only
+            // partly fits instead of consuming it and losing the remainder.
+            if (MAX_COOLANT - coolant < COOLANT_PER_BUCKET) {
+                Component message = coolant >= MAX_COOLANT
+                        ? Component.translatable("message.samogon.coolant_full")
+                        : Component.translatable("message.samogon.coolant_no_room");
+                player.displayClientMessage(message, true);
                 return InteractionResult.SUCCESS;
             }
-            coolant = Math.min(MAX_COOLANT, coolant + COOLANT_PER_BUCKET);
+            coolant += COOLANT_PER_BUCKET;
             consume(player, stack, Items.BUCKET);
             player.displayClientMessage(Component.translatable("message.samogon.coolant_added",
                     (int) Math.round(coolant / 360.0)), false);
@@ -1406,7 +1562,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 duration = 0;
                 announcedDone = false;
                 receiver = Fraction.HEARTS;
-                still = new StillRun(wash);
+                still = new StillRun(wash, fractional);
                 player.displayClientMessage(Component.translatable("message.samogon.distilling"), false);
                 if (coolant <= 0) {
                     player.displayClientMessage(Component.translatable("message.samogon.need_coolant"), false);
@@ -1420,7 +1576,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             return InteractionResult.SUCCESS;
         }
         if (stack.is(Items.GLASS_BOTTLE)) {
-            Fraction chosen = receiver;
+            Fraction chosen = effectiveReceiver();
             double available = still.cutVolume(chosen);
             if (available <= 0.0001) {
                 player.displayClientMessage(Component.translatable("message.samogon.no_cut",
@@ -1456,6 +1612,10 @@ public final class ProcessBlockEntity extends BlockEntity {
                 player.displayClientMessage(Component.translatable("message.samogon.still_cleared"), false);
                 return InteractionResult.SUCCESS;
             }
+            if (!still.fractional()) {
+                player.displayClientMessage(Component.translatable("message.samogon.whole_mode"), true);
+                return InteractionResult.SUCCESS;
+            }
             receiver = receiver == Fraction.HEADS ? Fraction.HEARTS
                     : receiver == Fraction.HEARTS ? Fraction.TAILS : Fraction.HEADS;
             player.displayClientMessage(Component.translatable("message.samogon.receiver",
@@ -1478,6 +1638,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 batch = feed;
                 stage = 1;
                 settle = 0;
+                columnRunsLeft = 0;
                 sieve = false;
                 player.displayClientMessage(Component.translatable("message.samogon.rectifying_hint"), false);
                 return InteractionResult.SUCCESS;
@@ -1490,6 +1651,10 @@ public final class ProcessBlockEntity extends BlockEntity {
                 stage = 0;
                 settle = 0;
                 player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
+                return InteractionResult.SUCCESS;
+            }
+            if (!canUseSieve()) {
+                player.displayClientMessage(Component.translatable("message.samogon.sieve_early"), false);
                 return InteractionResult.SUCCESS;
             }
             consume(player, stack, null);
@@ -1522,10 +1687,6 @@ public final class ProcessBlockEntity extends BlockEntity {
                 Batch feed = BatchData.read(stack);
                 if (feed.abv() < 1) {
                     player.displayClientMessage(Component.translatable("message.samogon.not_wash"), false);
-                    return InteractionResult.SUCCESS;
-                }
-                if (feed.filtered()) {
-                    player.displayClientMessage(Component.translatable("message.samogon.already_filtered"), false);
                     return InteractionResult.SUCCESS;
                 }
                 batch = feed;
@@ -1567,10 +1728,6 @@ public final class ProcessBlockEntity extends BlockEntity {
                 Batch feed = BatchData.read(stack);
                 if (feed.abv() < 1) {
                     player.displayClientMessage(Component.translatable("message.samogon.not_wash"), false);
-                    return InteractionResult.SUCCESS;
-                }
-                if (feed.abv() < 20 || feed.abv() > 60) {
-                    player.displayClientMessage(Component.translatable("message.samogon.strength_range"), false);
                     return InteractionResult.SUCCESS;
                 }
                 batch = feed;
@@ -1660,7 +1817,7 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (stage == 0) {
             if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
                 Batch feed = BatchData.read(stack);
-                if (feed.abv() < 20 || feed.abv() > 60) {
+                if (!Simulation.canAge(feed.abv())) {
                     player.displayClientMessage(Component.translatable("message.samogon.strength_range"), false);
                     return InteractionResult.SUCCESS;
                 }
@@ -1696,6 +1853,118 @@ public final class ProcessBlockEntity extends BlockEntity {
             return InteractionResult.SUCCESS;
         }
         return bottleSmall(player, stack, ModItems.OAK_AGED_SPIRIT.get());
+    }
+
+    /**
+     * The tasting table reads a bottle with a hydrometer. The drink is copied
+     * into a dedicated slot instead of being poured into the machine, so the
+     * sample is never consumed, never bottled, and can be taken back at any
+     * time without losing a drop.
+     */
+    private InteractionResult useTasting(Player player, InteractionHand hand, ItemStack stack) {
+        if (stack.getItem() instanceof BatchItem) {
+            if (!inventory.getItem(SLOT_INPUT).isEmpty()) {
+                player.displayClientMessage(Component.translatable("message.samogon.tasting.occupied"), true);
+                return InteractionResult.SUCCESS;
+            }
+            inventory.setItem(SLOT_INPUT, stack.copyWithCount(1));
+            consume(player, stack, null);
+            refreshTasting();
+            player.displayClientMessage(Component.translatable("message.samogon.tasting.drink_added"), true);
+            return InteractionResult.SUCCESS;
+        }
+        if (stack.is(ModItems.HYDROMETER.get())) {
+            if (!inventory.getItem(SLOT_ADDITIVE).isEmpty()) {
+                player.displayClientMessage(Component.translatable("message.samogon.tasting.gauge_present"), true);
+                return InteractionResult.SUCCESS;
+            }
+            inventory.setItem(SLOT_ADDITIVE, stack.copyWithCount(1));
+            consume(player, stack, null);
+            refreshTasting();
+            player.displayClientMessage(Component.translatable("message.samogon.tasting.gauge_added"), true);
+            return InteractionResult.SUCCESS;
+        }
+        showTastingStatus(player);
+        return InteractionResult.SUCCESS;
+    }
+
+    /**
+     * Recomputes the tasting readout from the two loaded items. The result is
+     * derived fresh every tick (and on load) instead of being stored in NBT:
+     * the bottle already carries the whole production history, so persisting a
+     * second copy could only drift or duplicate the sample.
+     */
+    private void refreshTasting() {
+        ItemStack drink = inventory.getItem(SLOT_INPUT);
+        ItemStack gauge = inventory.getItem(SLOT_ADDITIVE);
+        Batch sample = drink.getItem() instanceof BatchItem && gauge.is(ModItems.HYDROMETER.get())
+                ? readBatch(drink) : null;
+        if (sample == null) {
+            tastingBatch = null;
+            tastingValid = false;
+            tastingType = 0;
+            tastingIntox = 0;
+            tastingDuration = 0;
+            tastingAura = 0;
+            tastingAuraLevel = 0;
+            tastingAuraCount = 0;
+            tastingTechnical = 0;
+            tastingDrinkable = 0;
+            tastingAuras = Map.of();
+            return;
+        }
+        BatchItem item = (BatchItem) drink.getItem();
+        SpiritType type = item.typeOf(sample);
+        BatchItem.Tincture tincture = item.effectiveTincture(sample);
+        Map<String, Integer> auras = Intoxication.aurasFor(sample, tincture);
+        String dominant = Intoxication.dominantAura(auras);
+        int aura = Intoxication.auraIndex(dominant);
+        tastingBatch = sample;
+        tastingValid = true;
+        tastingType = type.ordinal();
+        tastingIntox = Intoxication.baseLevel(sample);
+        tastingDuration = Math.round(Intoxication.durationTicks(sample) / 20.0F);
+        tastingAura = aura + 1;
+        tastingAuraLevel = dominant == null ? 0 : auras.getOrDefault(dominant, 0);
+        tastingAuraCount = auras.size();
+        tastingAuras = auras;
+        tastingTechnical = item.technical() && sample.abv() > 0.1 ? 1 : 0;
+        tastingDrinkable = item.canDrink(sample) ? 1 : 0;
+    }
+
+    private void showTastingStatus(Player player) {
+        player.displayClientMessage(Component.translatable("message.samogon.status.header",
+                getBlockState().getBlock().getName()), false);
+        if (!tastingValid || tastingBatch == null) {
+            player.displayClientMessage(Component.translatable("message.samogon.tasting.incomplete"), false);
+            return;
+        }
+        SpiritType type = SpiritType.values()[Math.floorMod(tastingType, SpiritType.values().length)];
+        player.displayClientMessage(Component.translatable("message.samogon.tasting.result",
+                Component.translatable(type.translationKey()), f(tastingBatch.abv()),
+                Quality.label(tastingBatch.quality()), tastingBatch.impurities()), false);
+        player.displayClientMessage(Component.translatable("message.samogon.tasting.effects",
+                roman(tastingIntox), tastingDuration,
+                tastingAuraCount > 0
+                        ? Intoxication.auraSummary(tastingAuras)
+                        : Component.translatable("message.samogon.none")), false);
+        if (tastingTechnical == 1) {
+            player.displayClientMessage(Component.translatable("message.samogon.tasting.technical"), false);
+        }
+        if (tastingDrinkable == 0) {
+            player.displayClientMessage(Component.translatable("message.samogon.tasting.not_ready"), false);
+        }
+    }
+
+    private static String roman(int level) {
+        return switch (Math.max(0, Math.min(5, level))) {
+            case 0 -> "-";
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            default -> "V";
+        };
     }
 
     private InteractionResult bottleJar(Player player, ItemStack stack, Item item) {
@@ -1735,7 +2004,8 @@ public final class ProcessBlockEntity extends BlockEntity {
     private Batch takePortion(double amount) {
         double volume = Math.min(amount, batch.volume());
         Batch portion = new Batch(volume, batch.abv(), batch.quality(), batch.impurities(), batch.passes(),
-                batch.filtered(), batch.origin(), batch.age(), batch.composition());
+                batch.filtered(), batch.origin(), batch.age(), batch.composition(),
+                batch.rectified(), batch.oak(), batch.cut(), batch.columnRuns());
         double remaining = batch.volume() - volume;
         // Batch requires a strictly positive volume. Calling withVolume(0) on
         // the last bottle crashed the interaction instead of emptying the
@@ -1764,6 +2034,10 @@ public final class ProcessBlockEntity extends BlockEntity {
     }
 
     private void showStatus(Player player) {
+        if (kind() == ProcessBlock.Kind.TASTING) {
+            showTastingStatus(player);
+            return;
+        }
         player.displayClientMessage(Component.translatable("message.samogon.status.header",
                 getBlockState().getBlock().getName()), false);
         if (batch == null && still == null) {
@@ -1773,7 +2047,7 @@ public final class ProcessBlockEntity extends BlockEntity {
         switch (kind()) {
             case MASHING -> player.displayClientMessage(Component.translatable("message.samogon.status.mash",
                     progressPercent(), batch == null ? 0 : (int) batch.volume(),
-                    batch == null ? 0 : batch.quality()), false);
+                    batch == null ? Quality.label(0) : Quality.label(batch.quality())), false);
             case FERMENTATION -> player.displayClientMessage(Component.translatable("message.samogon.status.ferment",
                     progressPercent(), f(batch == null ? 0 : batch.volume()),
                     f(batch == null ? 0 : batch.abv()), f(ambient)), false);
@@ -1784,7 +2058,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 }
                 player.displayClientMessage(Component.translatable("message.samogon.status.still",
                         f(still.temperature()), f(still.abv()), f(still.pressure()),
-                        Component.translatable("fraction.samogon." + receiver.id()),
+                        Component.translatable("fraction.samogon." + effectiveReceiver().id()),
                         f(still.cutVolume(Fraction.HEADS)),
                         f(still.cutVolume(Fraction.HEARTS)), f(still.cutVolume(Fraction.TAILS))), false);
                 player.displayClientMessage(Component.translatable("message.samogon.status.coolant",
@@ -1833,7 +2107,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             return;
         }
         player.displayClientMessage(Component.translatable("message.samogon.hydrometer.batch",
-                f(batch.abv()), f(batch.volume()), batch.quality(), batch.impurities()), false);
+                f(batch.abv()), f(batch.volume()), Quality.label(batch.quality()), batch.impurities()), false);
     }
 
     private int progressPercent() {
@@ -1903,6 +2177,9 @@ public final class ProcessBlockEntity extends BlockEntity {
         tag.putString("AgingKind", agingKind);
         tag.putString("BlendComposition", blendComposition);
         tag.putString("Receiver", receiver.id());
+        tag.putBoolean("Fractional", fractional);
+        tag.putInt("ColumnRunsTarget", columnRunsTarget);
+        tag.putInt("ColumnRunsLeft", columnRunsLeft);
         tag.putInt("InventoryLayout", INVENTORY_LAYOUT);
         ContainerHelper.saveAllItems(tag, inventory.getItems(), registries);
         if (batch != null) tag.put("Batch", BatchNbt.save(batch));
@@ -1932,6 +2209,9 @@ public final class ProcessBlockEntity extends BlockEntity {
         announcedDone = tag.getBoolean("AnnouncedDone");
         agingKind = tag.getString("AgingKind");
         blendComposition = tag.getString("BlendComposition");
+        fractional = !tag.contains("Fractional") || tag.getBoolean("Fractional");
+        columnRunsTarget = tag.contains("ColumnRunsTarget") ? tag.getInt("ColumnRunsTarget") : 1;
+        columnRunsLeft = tag.getInt("ColumnRunsLeft");
         boolean legacyInventory = tag.getInt("InventoryLayout") < INVENTORY_LAYOUT;
         ContainerHelper.loadAllItems(tag, inventory.getItems(), registries);
         if (legacyInventory) {
@@ -1950,5 +2230,8 @@ public final class ProcessBlockEntity extends BlockEntity {
         } catch (IllegalArgumentException ignored) {
             receiver = Fraction.HEARTS;
         }
+        // Tasting values are derived, never stored; rebuild them from the two
+        // slots so a reloaded world shows the same report.
+        refreshTasting();
     }
 }

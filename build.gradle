@@ -58,9 +58,19 @@ tasks.register('verifyChains', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'ru.samogon.process.ProductionChainTest'
 }
+tasks.register('verifyTypes', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'ru.samogon.process.SpiritTypeTest'
+}
+tasks.register('verifyAromas', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'ru.samogon.process.AromaTest'
+}
 tasks.register('verifyAssets', Exec) {
     workingDir projectDir
     commandLine javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }.get().executablePath.asFile,
             'tools/VerifyAssets.java'
 }
-tasks.named('check') { dependsOn 'verifySimulation', 'verifyChains', 'verifyAssets' }
+tasks.named('check') { dependsOn 'verifySimulation', 'verifyChains', 'verifyTypes', 'verifyAromas', 'verifyAssets' }

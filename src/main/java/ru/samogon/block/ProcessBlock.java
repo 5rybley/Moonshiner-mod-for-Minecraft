@@ -30,7 +30,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import ru.samogon.registry.ModBlocks;
 
 public final class ProcessBlock extends Block implements EntityBlock {
-    public enum Kind { MASHING, FERMENTATION, DISTILLER, RECTIFIER, FILTER, BLENDING, DILUTION, AGING }
+    public enum Kind { MASHING, FERMENTATION, DISTILLER, RECTIFIER, FILTER, BLENDING, DILUTION, AGING, TASTING }
 
     public static final IntegerProperty HEAT = IntegerProperty.create("heat", 0, 4);
     public static final BooleanProperty ACTIVE = BooleanProperty.create("active");
@@ -291,6 +291,10 @@ public final class ProcessBlock extends Block implements EntityBlock {
                     level.playLocalSound(x, y, z, SoundEvents.COPPER_BREAK, SoundSource.BLOCKS,
                             0.08f, 1.8f, false);
                 }
+            }
+            case TASTING -> {
+                // The tasting table has no process to animate: it only reads
+                // the bottle and the hydrometer that sit on it.
             }
         }
     }

@@ -5,11 +5,11 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import ru.samogon.process.AromaFamily.Family;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.registry.ModItems;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,31 +27,6 @@ import java.util.stream.Collectors;
  */
 public final class BlendCatalog {
     public static final int MAX_ADDITIVES = 5;
-
-    public enum Family {
-        BERRY("berry"),
-        HONEY("honey"),
-        BOTANICAL("botanical"),
-        ROOT("root"),
-        SEED("seed"),
-        FRUIT("fruit"),
-        SPICE("spice"),
-        FUNGUS("fungus"),
-        MARINE("marine"),
-        EXOTIC("exotic"),
-        SWEET("sweet"),
-        GRAIN("grain");
-
-        private final String id;
-
-        Family(String id) {
-            this.id = id;
-        }
-
-        public String id() {
-            return id;
-        }
-    }
 
     /**
      * One kitchen ingredient. Quality and impurity values are intentionally
@@ -90,7 +65,33 @@ public final class BlendCatalog {
             new Additive("sugar_cane", Items.SUGAR_CANE, Family.SWEET, 1, 2),
             new Additive("chorus_fruit", Items.CHORUS_FRUIT, Family.EXOTIC, 5, 6),
             new Additive("sugar", Items.SUGAR, Family.SWEET, 1, 3),
-            new Additive("wheat", Items.WHEAT, Family.GRAIN, 2, 2)
+            new Additive("wheat", Items.WHEAT, Family.GRAIN, 2, 2),
+            // 0.0.2: a broader kitchen, garden and sea pantry.
+            new Additive("melon_slice", Items.MELON_SLICE, Family.FRUIT, 3, 1),
+            new Additive("pumpkin", Items.PUMPKIN, Family.FRUIT, 2, 2),
+            new Additive("golden_apple", Items.GOLDEN_APPLE, Family.FRUIT, 8, 0),
+            new Additive("crimson_fungus", Items.CRIMSON_FUNGUS, Family.FUNGUS, 1, 5),
+            new Additive("warped_fungus", Items.WARPED_FUNGUS, Family.FUNGUS, 1, 5),
+            new Additive("vine", Items.VINE, Family.BOTANICAL, 1, 2),
+            new Additive("fern", Items.FERN, Family.BOTANICAL, 2, 1),
+            new Additive("large_fern", Items.LARGE_FERN, Family.BOTANICAL, 2, 1),
+            new Additive("torchflower", Items.TORCHFLOWER, Family.BOTANICAL, 4, 0),
+            new Additive("pitcher_plant", Items.PITCHER_PLANT, Family.BOTANICAL, 4, 0),
+            new Additive("spore_blossom", Items.SPORE_BLOSSOM, Family.BOTANICAL, 3, 1),
+            new Additive("lily_of_the_valley", Items.LILY_OF_THE_VALLEY, Family.BOTANICAL, 3, 0),
+            new Additive("blue_orchid", Items.BLUE_ORCHID, Family.BOTANICAL, 3, 0),
+            new Additive("sea_pickle", Items.SEA_PICKLE, Family.MARINE, 2, 2),
+            new Additive("seagrass", Items.SEAGRASS, Family.MARINE, 1, 2),
+            new Additive("nautilus_shell", Items.NAUTILUS_SHELL, Family.MARINE, 4, 2),
+            new Additive("prismarine_crystals", Items.PRISMARINE_CRYSTALS, Family.MARINE, 3, 2),
+            new Additive("ink_sac", Items.INK_SAC, Family.MARINE, 1, 3),
+            new Additive("glow_ink_sac", Items.GLOW_INK_SAC, Family.MARINE, 2, 3),
+            new Additive("honeycomb", Items.HONEYCOMB, Family.HONEY, 4, 1),
+            new Additive("blaze_powder", Items.BLAZE_POWDER, Family.SPICE, 4, 5),
+            new Additive("magma_cream", Items.MAGMA_CREAM, Family.SPICE, 3, 5),
+            new Additive("bamboo", Items.BAMBOO, Family.GRAIN, 1, 2),
+            new Additive("cookie", Items.COOKIE, Family.SWEET, 1, 3),
+            new Additive("bread", Items.BREAD, Family.GRAIN, 2, 2)
     );
 
     private static final Map<String, Additive> BY_ID = ADDITIVES.stream()
@@ -147,9 +148,6 @@ public final class BlendCatalog {
 
     public static Batch blend(Batch source, List<Additive> additives) {
         if (source == null) throw new IllegalArgumentException("A batch is required");
-        if (source.abv() < 20 || source.abv() > 60) {
-            throw new IllegalArgumentException("Blending needs 20-60% ABV");
-        }
         if (additives == null || additives.isEmpty() || additives.size() > MAX_ADDITIVES) {
             throw new IllegalArgumentException("Use one to five additives");
         }
@@ -166,23 +164,13 @@ public final class BlendCatalog {
                 + (int) Math.round(impuritySum * 0.65) - complexity / 2);
         double volume = source.volume() * (1.0 - 0.004 * additives.size());
         return new Batch(volume, source.abv(), quality, impurities, source.passes(),
-                source.filtered(), source.origin(), source.age() + 1, encode(additives));
+                source.filtered(), source.origin(), source.age() + 1, encode(additives),
+                source.rectified(), source.oak(), source.cut(), source.columnRuns());
     }
 
     /** The family that contributes the strongest aromatic character. */
     public static Family dominant(String composition) {
-        List<Additive> additives = decode(composition);
-        if (additives.isEmpty()) return Family.SWEET;
-        Map<Family, Integer> weights = new LinkedHashMap<>();
-        for (Additive additive : additives) {
-            int weight = additive.quality() * 2 - additive.impurities();
-            weights.merge(additive.family(), weight, Integer::sum);
-        }
-        return weights.entrySet().stream()
-                .max(Comparator.<Map.Entry<Family, Integer>>comparingInt(Map.Entry::getValue)
-                        .thenComparing(entry -> entry.getKey().id()))
-                .map(Map.Entry::getKey)
-                .orElse(Family.SWEET);
+        return AromaFamily.dominant(composition);
     }
 
     /**
@@ -197,6 +185,48 @@ public final class BlendCatalog {
         return Component.translatable("item.samogon.artisan_samogon.named",
                 Component.translatable("samogon.blend.adjective." + family.id()),
                 Component.translatable("samogon.blend.noun." + NAME_NOUNS[noun]));
+    }
+
+    /**
+     * The same composition-derived name, but with the drink type in front:
+     * "Chacha «Sunset wind»". This lets a blended bottle show both what it is
+     * and which recipe produced it.
+     */
+    public static MutableComponent displayName(String composition, Component typeName) {
+        Family family = dominant(composition);
+        int hash = composition == null ? 0 : composition.hashCode();
+        int noun = Math.floorMod(hash, NAME_NOUNS.length);
+        return Component.translatable("item.samogon.artisan_samogon.typed",
+                typeName,
+                Component.translatable("samogon.blend.adjective." + family.id()),
+                Component.translatable("samogon.blend.noun." + NAME_NOUNS[noun]));
+    }
+
+    /**
+     * Origin-aware name. The raw material is part of the hash, so the same set
+     * of additives produces a different name from grain than from berries.
+     * This is the name used by bottles created from 0.0.2 onward.
+     */
+    public static MutableComponent displayName(String origin, String composition) {
+        Family family = dominant(composition);
+        int noun = Math.floorMod(nameSeed(origin, composition), NAME_NOUNS.length);
+        return Component.translatable("item.samogon.artisan_samogon.named",
+                Component.translatable("samogon.blend.adjective." + family.id()),
+                Component.translatable("samogon.blend.noun." + NAME_NOUNS[noun]));
+    }
+
+    /** Origin-aware name with the drink type in front. */
+    public static MutableComponent displayName(String origin, String composition, Component typeName) {
+        Family family = dominant(composition);
+        int noun = Math.floorMod(nameSeed(origin, composition), NAME_NOUNS.length);
+        return Component.translatable("item.samogon.artisan_samogon.typed",
+                typeName,
+                Component.translatable("samogon.blend.adjective." + family.id()),
+                Component.translatable("samogon.blend.noun." + NAME_NOUNS[noun]));
+    }
+
+    private static int nameSeed(String origin, String composition) {
+        return ((origin == null ? "" : origin) + "|" + (composition == null ? "" : composition)).hashCode();
     }
 
     /** Localized, comma-separated composition for tooltips. */
@@ -218,15 +248,17 @@ public final class BlendCatalog {
 
     /** Tincture aura chosen by the dominant family, or "none". */
     public static String aura(String composition) {
-        return switch (dominant(composition)) {
-            case BERRY, SWEET, EXOTIC -> "berry";
-            case FRUIT -> "fruit";
-            case HONEY -> "honey";
-            case BOTANICAL, SEED, FUNGUS -> "botanical";
-            case MARINE -> "marine";
-            case SPICE -> "spice";
-            case ROOT, GRAIN -> "oak";
-        };
+        return AromaFamily.aura(dominant(composition));
+    }
+
+    /**
+     * Aura strengths for a composition. Every additive contributes one point to
+     * its family's aura; duplicates stack and different families stay separate,
+     * so five berries give a single level-V aura while a botanical, a berry and
+     * a honey give three level-I auras.
+     */
+    public static Map<String, Integer> auraLevels(String composition) {
+        return AromaFamily.auraLevels(composition);
     }
 
     private static final String[] NAME_NOUNS = {

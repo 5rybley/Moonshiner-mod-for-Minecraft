@@ -18,6 +18,7 @@ import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
 import ru.samogon.process.BlendCatalog;
 import ru.samogon.process.MachineData;
+import ru.samogon.process.Simulation;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.process.Simulation.Fraction;
 import ru.samogon.registry.ModItems;
@@ -109,7 +110,14 @@ public final class ProcessMenu extends AbstractContainerMenu {
         addSlot(new Slot(container, SLOT_OUTPUT, outputX(kind), OUTPUT_Y) {
             @Override
             public boolean mayPlace(ItemStack stack) {
-                return isOutputContainer(stack);
+                return kind != ProcessBlock.Kind.TASTING && isOutputContainer(stack);
+            }
+
+            @Override
+            public boolean isActive() {
+                // The tasting table has no product: the sample stays in the
+                // input slot and nothing is ever bottled.
+                return kind != ProcessBlock.Kind.TASTING;
             }
 
             @Override
@@ -174,7 +182,11 @@ public final class ProcessMenu extends AbstractContainerMenu {
                     || stack.is(Items.WHEAT)
                     || stack.is(Items.SUGAR)
                     || stack.is(Items.SWEET_BERRIES)
-                    || stack.is(Items.HONEY_BOTTLE);
+                    || stack.is(Items.HONEY_BOTTLE)
+                    || stack.is(Items.POTATO)
+                    || stack.is(Items.BEETROOT)
+                    || stack.is(Items.SUGAR_CANE)
+                    || stack.is(Items.APPLE);
         }
         if (!(stack.getItem() instanceof BatchItem)) return false;
         try {
@@ -184,10 +196,11 @@ public final class ProcessMenu extends AbstractContainerMenu {
                 case FERMENTATION -> batch.abv() <= 0.5;
                 case DISTILLER -> batch.abv() >= 1 && batch.volume() >= 100;
                 case RECTIFIER -> batch.abv() >= 1 && batch.volume() >= 10;
-                case FILTER -> batch.abv() >= 1 && !batch.filtered();
-                case BLENDING -> batch.abv() >= 20 && batch.abv() <= 60;
+                case FILTER -> batch.abv() >= 1;
+                case BLENDING -> true;
                 case DILUTION -> batch.abv() > 40 && batch.alcohol() * 100 / 40.0 <= 4000.0 + 1.0E-9;
-                case AGING -> batch.abv() >= 20 && batch.abv() <= 60;
+                case AGING -> Simulation.canAge(batch.abv());
+                case TASTING -> true;
                 case MASHING -> false;
             };
         } catch (RuntimeException ignored) {
@@ -205,6 +218,7 @@ public final class ProcessMenu extends AbstractContainerMenu {
             case BLENDING -> stack.is(Items.WATER_BUCKET) || BlendCatalog.find(stack) != null;
             case DILUTION -> stack.is(Items.WATER_BUCKET);
             case AGING -> stack.is(ModItems.OAK_CHIPS.get());
+            case TASTING -> stack.is(ModItems.HYDROMETER.get());
         };
     }
 
@@ -242,6 +256,7 @@ public final class ProcessMenu extends AbstractContainerMenu {
                 targetStart = SLOT_ADDITIVE;
                 targetEnd = kind == ProcessBlock.Kind.BLENDING ? SLOT_ADDITIVE_LAST + 1 : SLOT_ADDITIVE + 1;
             } else if (isOutputContainer(stack)) {
+                if (kind == ProcessBlock.Kind.TASTING) return ItemStack.EMPTY;
                 targetStart = SLOT_OUTPUT;
                 targetEnd = SLOT_OUTPUT + 1;
             }
@@ -268,10 +283,14 @@ public final class ProcessMenu extends AbstractContainerMenu {
         if (kind == ProcessBlock.Kind.BLENDING && id == 2) {
             return machine.startBlending(player);
         }
+        if (kind == ProcessBlock.Kind.RECTIFIER && id == 4) {
+            return machine.cycleColumnRuns();
+        }
         if (kind != ProcessBlock.Kind.DISTILLER) return false;
         return switch (id) {
             case 0 -> machine.cycleReceiver();
             case 1 -> machine.clearStill();
+            case 3 -> machine.toggleFractional();
             default -> false;
         };
     }

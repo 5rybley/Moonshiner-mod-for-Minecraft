@@ -27,14 +27,16 @@ public class GenerateAssets {
             "charcoal_filter", "gravity feed · no heat",
             "dilution_basin", "water dilution · no heat",
             "blending_table", "aroma blending · no heat",
-            "aging_cask", "oak maturation · no heat");
+            "aging_cask", "oak maturation · no heat",
+            "tasting_table", "tasting flight · no heat");
     static final Map<String, List<Box>> ITEMS = new LinkedHashMap<>();
     static final String[] DIRECTIONS = {"down", "up", "north", "south", "west", "east"};
     /** Horizontal facings a machine can face, with the block model y rotation that turns its north front to each. */
     static final String[] FACINGS = {"north", "east", "south", "west"};
     static final int[] FACING_Y = {0, 90, 180, 270};
     static final List<String> MACHINES = List.of("mash_tun", "fermentation_barrel", "distiller",
-            "reflux_column", "charcoal_filter", "dilution_basin", "blending_table", "aging_cask", "condenser");
+            "reflux_column", "charcoal_filter", "dilution_basin", "blending_table", "aging_cask", "condenser",
+            "tasting_table");
     static final List<String> ITEM_NAMES = List.of("sweet_wort", "fermented_mash", "heads_fraction",
             "hearts_fraction", "tails_fraction", "neutral_spirit", "anhydrous_spirit", "filtered_spirit",
             "diluted_spirit", "berry_tincture", "honey_tincture", "botanical_tincture", "oak_aged_spirit",
@@ -237,6 +239,7 @@ public class GenerateAssets {
         blendingTable();
         agingCask();
         condenser();
+        tastingTable();
     }
 
     static void distiller() {
@@ -557,6 +560,46 @@ public class GenerateAssets {
         }
         BLOCKS.put("blending_table", m);
         BLOCK_TITLES.put("blending_table", "BLENDING TABLE");
+    }
+
+    static void tastingTable() {
+        List<Box> m = new ArrayList<>();
+        // Low round tasting table on four sturdy legs.
+        box(m, "dark_wood", 1.4, 8.4, 1.4, 14.6, 9.0, 14.6);
+        oct(m, "oak", 8, 8, 6.6, 9.0, 9.9);
+        oct(m, "oak_light", 8, 8, 6.7, 9.9, 10.25);
+        for (int x : new int[]{3, 11}) {
+            for (int z : new int[]{3, 11}) {
+                box(m, "dark_wood", x, 0.0, z, x + 2.0, 8.4, z + 2.0);
+                box(m, "iron_dark", x - 0.1, 0.0, z - 0.1, x + 2.1, 0.9, z + 2.1);
+            }
+        }
+        // Tasting glass with a measure of amber spirit.
+        oct(m, "glass", 5.0, 12.0, 1.15, 10.25, 11.6);
+        oct(m, "amber", 5.0, 12.0, 0.95, 10.3, 11.35);
+        box(m, "glass_light", 4.55, 11.0, 11.9, 4.75, 11.7, 12.1);
+        // Hydrometer floating in a measuring cylinder.
+        oct(m, "glass", 8.9, 8.4, 1.25, 10.2, 13.2);
+        oct(m, "water", 8.9, 8.4, 1.0, 10.3, 11.9);
+        box(m, "glass_light", 8.75, 10.45, 8.25, 8.95, 13.1, 8.45);
+        oct(m, "cork", 8.9, 8.4, 0.55, 12.0, 13.5);
+        box(m, "red", 8.72, 10.6, 8.85, 9.02, 10.9, 9.15);
+        // Open tasting notebook with ruled lines and a brass paperweight.
+        box(m, "paper", 10.2, 10.3, 1.8, 14.2, 10.62, 5.4);
+        box(m, "ink", 10.6, 10.64, 2.3, 13.6, 10.7, 2.55);
+        box(m, "ink", 10.6, 10.64, 3.0, 13.3, 10.7, 3.25);
+        box(m, "ink", 10.6, 10.64, 3.7, 13.5, 10.7, 3.95);
+        box(m, "ink", 10.6, 10.64, 4.4, 12.9, 10.7, 4.65);
+        box(m, "brass", 10.9, 10.3, 4.9, 13.1, 10.95, 5.2);
+        // Slate chart of tasting notes on the back edge.
+        box(m, "dark_wood", 9.8, 10.9, 13.0, 14.4, 14.0, 13.5);
+        box(m, "black", 10.0, 11.1, 13.42, 14.2, 13.8, 13.55);
+        box(m, "cream", 10.3, 13.3, 13.4, 13.9, 13.6, 13.48);
+        box(m, "red", 10.3, 12.6, 13.4, 11.4, 12.9, 13.48);
+        box(m, "green", 11.7, 12.6, 13.4, 12.8, 12.9, 13.48);
+        box(m, "copper_light", 13.0, 12.6, 13.4, 13.9, 12.9, 13.48);
+        BLOCKS.put("tasting_table", m);
+        BLOCK_TITLES.put("tasting_table", "TASTING TABLE");
     }
 
     static void label(List<Box> m, double x1, double y1, double x2, double y2) {

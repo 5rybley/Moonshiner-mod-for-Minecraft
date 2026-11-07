@@ -31,6 +31,8 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import ru.samogon.item.BatchData;
+import ru.samogon.process.Quality;
+import ru.samogon.process.Simulation;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.registry.ModBlocks;
 import ru.samogon.registry.ModItems;
@@ -509,11 +511,8 @@ public final class AgingBarrelBlock extends Block implements EntityBlock {
         if (AgingBarrelBlockEntity.isBottle(stack)) {
             if (!level.isClientSide) {
                 Batch batch = BatchData.read(stack);
-                if (batch.abv() < 20.0 || batch.abv() > 60.0) {
+                if (!Simulation.canAge(batch.abv())) {
                     player.displayClientMessage(Component.translatable("message.samogon.strength_range"), true);
-                } else if (stack.is(ModItems.OAK_AGED_SPIRIT.get())) {
-                    player.displayClientMessage(Component.translatable(
-                            "message.samogon.barrel.already_aged"), true);
                 } else if (cask.tryInsertBottle(stack)) {
                     if (!player.getAbilities().instabuild) stack.shrink(1);
                     level.playSound(null, pos, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 0.35f, 1.2f);
@@ -592,7 +591,7 @@ public final class AgingBarrelBlock extends Block implements EntityBlock {
             if (!AgingBarrelBlockEntity.isBottle(bottle)) continue;
             Batch batch = BatchData.read(bottle);
             player.displayClientMessage(Component.translatable("message.samogon.hydrometer.barrel.entry",
-                    bottle.getHoverName(), f(batch.abv()), f(batch.volume()), batch.quality()), false);
+                    bottle.getHoverName(), f(batch.abv()), f(batch.volume()), Quality.label(batch.quality())), false);
         }
     }
 

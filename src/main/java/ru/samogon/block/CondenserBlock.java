@@ -93,8 +93,14 @@ public final class CondenserBlock extends Block implements EntityBlock {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         if (!level.isClientSide) {
-            if (condenser.isFull()) {
-                player.displayClientMessage(Component.translatable("message.samogon.condenser.full"), true);
+            // Only take the bucket when all of it fits. Topping the tank up by
+            // a fraction and still consuming the whole bucket silently deleted
+            // up to one bucket of water.
+            if (condenser.remaining() < ProcessBlockEntity.COOLANT_PER_BUCKET) {
+                Component message = condenser.isFull()
+                        ? Component.translatable("message.samogon.condenser.full")
+                        : Component.translatable("message.samogon.condenser.no_room");
+                player.displayClientMessage(message, true);
             } else {
                 condenser.addWater(ProcessBlockEntity.COOLANT_PER_BUCKET);
                 if (!player.getAbilities().instabuild) {

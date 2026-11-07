@@ -25,6 +25,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import ru.samogon.item.BatchData;
+import ru.samogon.process.Quality;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.registry.ModItems;
 
@@ -139,7 +140,7 @@ public final class SamogonCrateBlock extends Block implements EntityBlock {
             if (!SamogonCrateBlockEntity.isBottle(bottle)) continue;
             Batch batch = BatchData.read(bottle);
             player.displayClientMessage(Component.translatable("message.samogon.hydrometer.crate.entry",
-                    bottle.getHoverName(), f(batch.abv()), f(batch.volume()), batch.quality()), false);
+                    bottle.getHoverName(), f(batch.abv()), f(batch.volume()), Quality.label(batch.quality())), false);
         }
     }
 

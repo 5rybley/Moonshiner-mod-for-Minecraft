@@ -7,6 +7,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import ru.samogon.process.Quality;
 import ru.samogon.process.Simulation.Batch;
 
 import java.util.Locale;
@@ -42,7 +43,7 @@ public final class HydrometerItem extends Item {
                 sample.getHoverName(),
                 f(batch.abv()),
                 f(batch.volume()),
-                batch.quality(),
+                Quality.label(batch.quality()),
                 batch.impurities()), false);
         return InteractionResultHolder.success(held);
     }

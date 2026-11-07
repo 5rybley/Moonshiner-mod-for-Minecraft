@@ -5,20 +5,31 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
-import ru.samogon.process.BlendCatalog;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.registry.ModItems;
 
 public final class BatchData {
+    /** True when the stack carries the mod's own batch payload. */
+    public static boolean has(ItemStack stack) {
+        if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof BatchItem)) return false;
+        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().contains("samogon_volume");
+    }
+
     public static Batch read(ItemStack stack) {
         if (!(stack.getItem() instanceof BatchItem item)) throw new IllegalArgumentException("Not a batch item");
         CompoundTag data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         try {
             if (data.contains("samogon_volume")) {
+                // Old bottles never stored the cut flag; anything distilled was
+                // historically separated into fractions.
+                boolean cut = data.contains("samogon_cut")
+                        ? data.getBoolean("samogon_cut")
+                        : data.getInt("samogon_passes") > 0;
                 return new Batch(data.getDouble("samogon_volume"), data.getDouble("samogon_abv"),
                         data.getInt("samogon_quality"), data.getInt("samogon_impurities"), data.getInt("samogon_passes"),
                         data.getBoolean("samogon_filtered"), data.getString("samogon_origin"), data.getInt("samogon_age"),
-                        data.getString("samogon_composition"));
+                        data.getString("samogon_composition"), data.getBoolean("samogon_rectified"),
+                        data.getInt("samogon_oak"), cut, data.getInt("samogon_column_runs"));
             }
         } catch (IllegalArgumentException ignored) { /* Invalid external item data falls back to safe defaults. */ }
         boolean wort = stack.is(ModItems.SWEET_WORT.get());
@@ -42,11 +53,11 @@ public final class BatchData {
         tag.putString("samogon_origin", batch.origin());
         tag.putInt("samogon_age", batch.age());
         tag.putString("samogon_composition", batch.composition());
+        tag.putBoolean("samogon_rectified", batch.rectified());
+        tag.putInt("samogon_oak", batch.oak());
+        tag.putBoolean("samogon_cut", batch.cut());
+        tag.putInt("samogon_column_runs", batch.columnRuns());
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
-        if (item == ModItems.SAMOGON.get() && !batch.composition().isBlank()) {
-            stack.set(DataComponents.CUSTOM_NAME, BlendCatalog.displayName(batch.composition())
-                    .withStyle(net.minecraft.ChatFormatting.GOLD));
-        }
         return stack;
     }
 

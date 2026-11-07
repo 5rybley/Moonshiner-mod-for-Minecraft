@@ -272,7 +272,7 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
                 continue;
             }
             Batch batch = BatchData.read(stack);
-            if (batch.abv() < 20.0 || batch.abv() > 60.0) {
+            if (!Simulation.canAge(batch.abv())) {
                 progress[slot] = 0;
                 continue;
             }
@@ -297,7 +297,7 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
             Batch matured = Simulation.mature(batch, true);
             return BatchData.create(ModItems.OAK_AGED_SPIRIT.get(), matured);
         } catch (IllegalArgumentException exception) {
-            // A hand-edited bottle outside 20-60% ABV simply stays untouched.
+            // A hand-edited bottle outside 4-60% ABV simply stays untouched.
             return stack;
         }
     }
