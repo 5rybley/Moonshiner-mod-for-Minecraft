@@ -416,9 +416,6 @@ public final class ProcessBlockEntity extends BlockEntity {
      */
     public boolean startBlending(Player player) {
         if (kind() != ProcessBlock.Kind.BLENDING || stage != 1 || batch == null) {
-            if (player != null) {
-                player.displayClientMessage(Component.translatable("message.samogon.blend.not_ready"), true);
-            }
             return false;
         }
 
@@ -437,26 +434,15 @@ public final class ProcessBlockEntity extends BlockEntity {
             }
             BlendCatalog.Additive additive = BlendCatalog.find(stack);
             if (additive == null) {
-                if (player != null) {
-                    player.displayClientMessage(Component.translatable("message.samogon.blend.invalid",
-                            stack.getHoverName()), true);
-                }
                 return false;
             }
             additives.add(additive);
         }
 
         if (hasWater && (additives.size() > 0 || waterSlots > 1)) {
-
-            if (player != null) {
-                player.displayClientMessage(Component.translatable("message.samogon.blend.water_only"), true);
-            }
             return false;
         }
         if (additives.isEmpty() && !hasWater) {
-            if (player != null) {
-                player.displayClientMessage(Component.translatable("message.samogon.blend.no_additives"), true);
-            }
             return false;
         }
 
@@ -464,15 +450,9 @@ public final class ProcessBlockEntity extends BlockEntity {
             // A single bucket is the old dilution operation. It is deliberately
             // not part of a five-ingredient maceration.
             if (batch.abv() <= 40) {
-                if (player != null) {
-                    player.displayClientMessage(Component.translatable("message.samogon.dilute_needed"), true);
-                }
                 return false;
             }
             if (!fitsDilutionBasin(batch)) {
-                if (player != null) {
-                    player.displayClientMessage(Component.translatable("message.samogon.dilution_failed"), true);
-                }
                 return false;
             }
             for (int slot : filledSlots) {
@@ -484,7 +464,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             stage = 3;
             progress = 0;
             duration = BLEND_TICKS;
-            startBlendMessage(player);
             setChanged();
             return true;
         }
@@ -501,15 +480,8 @@ public final class ProcessBlockEntity extends BlockEntity {
         stage = 3;
         progress = 0;
         duration = INFUSE_TICKS;
-        startBlendMessage(player);
         setChanged();
         return true;
-    }
-
-    private void startBlendMessage(Player player) {
-        Component message = Component.translatable("message.samogon.blend.started");
-        if (player != null) player.displayClientMessage(message, false);
-        notifyNearby("message.samogon.blend.started");
     }
 
     /** Adds one manually held additive to the first free tray slot. */
@@ -517,17 +489,14 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (!isBlendAdditive(stack)) return false;
         int slot = firstEmptyAdditiveSlot();
         if (slot < 0) {
-            player.displayClientMessage(Component.translatable("message.samogon.blend.full"), true);
             return true;
         }
-        Component additiveName = stack.getHoverName();
         inventory.setItem(slot, stack.copyWithCount(1));
         // Keep the container tied to the stored tray item. startBlending
         // returns the bottle/bucket when it consumes the tray, so returning it
         // here as well would duplicate it.
         consume(player, stack, null);
-        player.displayClientMessage(Component.translatable("message.samogon.blend.added",
-                additiveName, slot - SLOT_ADDITIVE + 1), true);
+
         setChanged();
         return true;
     }
@@ -960,7 +929,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             stage = 4;
             active = false;
             setChanged();
-            notifyNearby("message.samogon.mash.ready");
             burst(ParticleTypes.CAMPFIRE_COSY_SMOKE, 12, 0.35, 0.02);
             level.playSound(null, worldPosition, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.5f, 1.2f);
         }
@@ -977,7 +945,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             // working range, not only on the one tick out of a hundred when
             // progress is sampled.
             active = false;
-            if (tickCounter % 600 == 0) notifyNearby("message.samogon.ferment.stalled", f(temp));
             return;
         }
         active = true;
@@ -1004,7 +971,6 @@ public final class ProcessBlockEntity extends BlockEntity {
         active = false;
         progress = duration;
         setChanged();
-        notifyNearby("message.samogon.ferment.ready");
         burst(ParticleTypes.BUBBLE_POP, 20, 0.35, 0.02);
         level.playSound(null, worldPosition, SoundEvents.BREWING_STAND_BREW, SoundSource.BLOCKS, 0.6f, 1.1f);
     }
@@ -1024,22 +990,17 @@ public final class ProcessBlockEntity extends BlockEntity {
             temperature = still.temperature();
             if (heated && cooled) {
                 coolant = Math.max(0, coolant - 6);
-                if (coolant == 0 && !pullCoolantFromCondensers(COOLANT_PER_BUCKET)) {
-                    notifyNearby("message.samogon.coolant_empty");
+                if (coolant == 0) {
+                    pullCoolantFromCondensers(COOLANT_PER_BUCKET);
                 }
             }
-            if (!cooled && heated && tickCounter % 200 == 0) {
-                notifyNearby("message.samogon.need_coolant");
-            }
             if (still.consumePukeFlag()) {
-                notifyNearby("message.samogon.puked");
                 burst(ParticleTypes.LARGE_SMOKE, 16, 0.4, 0.03);
                 level.playSound(null, worldPosition, SoundEvents.LAVA_EXTINGUISH,
                         SoundSource.BLOCKS, 0.9f, 0.7f);
             }
             if (still.finished() && !announcedDone) {
                 announcedDone = true;
-                notifyNearby("message.samogon.still_done", f(still.cutVolume(Fraction.HEARTS)));
                 burst(ParticleTypes.DRIPPING_HONEY, 16, 0.25, 0.02);
                 level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL,
                         SoundSource.BLOCKS, 0.7f, 0.9f);
@@ -1080,7 +1041,6 @@ public final class ProcessBlockEntity extends BlockEntity {
                 duration = RECTIFY_TICKS;
                 settle = 0;
                 columnRunsLeft = Math.max(1, columnRunsTarget);
-                notifyNearby("message.samogon.rectifying");
             }
             active = false;
             return;
@@ -1115,8 +1075,6 @@ public final class ProcessBlockEntity extends BlockEntity {
                 progress = 0;
                 duration = RECTIFY_TICKS;
                 setChanged();
-                notifyNearby("message.samogon.rectify.run",
-                        batch.columnRuns(), columnRunsTarget, f(batch.abv()));
                 burst(ParticleTypes.CLOUD, 8, 0.2, 0.01);
                 return;
             }
@@ -1125,7 +1083,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             active = false;
             progress = duration;
             setChanged();
-            notifyNearby("message.samogon.rectify.ready", f(batch.abv()));
             burst(ParticleTypes.CLOUD, 16, 0.25, 0.02);
             level.playSound(null, worldPosition, SoundEvents.BREWING_STAND_BREW,
                     SoundSource.BLOCKS, 0.55f, 1.25f);
@@ -1149,7 +1106,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             active = false;
             progress = duration;
             setChanged();
-            notifyNearby("message.samogon.filter.ready");
             burst(ParticleTypes.DRIPPING_WATER, 14, 0.25, 0.02);
             level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL,
                     SoundSource.BLOCKS, 0.55f, 1.15f);
@@ -1187,7 +1143,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             stage = 4;
             active = false;
             progress = duration;
-            notifyNearby("message.samogon.blend.ready");
             burst(ParticleTypes.SPLASH, 18, 0.3, 0.03);
             level.playSound(null, worldPosition, SoundEvents.BUCKET_EMPTY,
                     SoundSource.BLOCKS, 0.5f, 1.1f);
@@ -1197,7 +1152,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             progress = 0;
             agingKind = "";
             blendComposition = "";
-            notifyNearby("message.samogon.blend.failed");
         }
         setChanged();
     }
@@ -1219,7 +1173,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             stage = 4;
             active = false;
             progress = duration;
-            notifyNearby("message.samogon.dilution.ready", f(batch.abv()));
             burst(ParticleTypes.SPLASH, 24, 0.35, 0.03);
             level.playSound(null, worldPosition, SoundEvents.BUCKET_EMPTY,
                     SoundSource.BLOCKS, 0.6f, 1.2f);
@@ -1227,7 +1180,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             stage = 1;
             active = false;
             progress = 0;
-            notifyNearby("message.samogon.dilution.failed");
         }
         setChanged();
     }
@@ -1249,7 +1201,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             stage = 4;
             active = false;
             progress = duration;
-            notifyNearby("message.samogon.aging.ready");
             burst(ParticleTypes.END_ROD, 14, 0.25, 0.01);
             level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME,
                     SoundSource.BLOCKS, 0.45f, 1.4f);
@@ -1257,7 +1208,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             stage = 1;
             active = false;
             progress = 0;
-            notifyNearby("message.samogon.dilute_first");
         }
         setChanged();
     }
@@ -1473,17 +1423,11 @@ public final class ProcessBlockEntity extends BlockEntity {
                 progress = 0;
                 duration = MASH_TICKS;
                 settle = 0;
-                player.displayClientMessage(Component.translatable("message.samogon.mashing"), false);
-                if (Environment.heatStrength(level, worldPosition.below()) <= 0) {
-                    player.displayClientMessage(Component.translatable("message.samogon.need_heat"), false);
-                }
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.mashing_hint"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 3) {
-            showBusy(player);
             return InteractionResult.SUCCESS;
         }
         return bottleJar(player, stack, ModItems.SWEET_WORT.get());
@@ -1494,16 +1438,13 @@ public final class ProcessBlockEntity extends BlockEntity {
             if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
                 Batch wort = BatchData.read(stack);
                 if (wort.abv() > 0.5) {
-                    player.displayClientMessage(Component.translatable("message.samogon.need_wort"), false);
                     return InteractionResult.SUCCESS;
                 }
                 batch = wort;
                 stage = 1;
                 consume(player, stack, Items.GLASS_BOTTLE);
-                player.displayClientMessage(Component.translatable("message.samogon.fermentation_hint"), false);
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.fermentation_hint"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 1) {
@@ -1516,14 +1457,11 @@ public final class ProcessBlockEntity extends BlockEntity {
                 deviationSamples = 0;
                 ambientSum = 0;
                 ambientSamples = 0;
-                player.displayClientMessage(Component.translatable("message.samogon.fermenting"), false);
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.add_yeast"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 2) {
-            showBusy(player);
             return InteractionResult.SUCCESS;
         }
         return bottleJar(player, stack, ModItems.FERMENTED_MASH.get());
@@ -1536,23 +1474,16 @@ public final class ProcessBlockEntity extends BlockEntity {
             // As with the standalone condenser, refuse a bucket that only
             // partly fits instead of consuming it and losing the remainder.
             if (MAX_COOLANT - coolant < COOLANT_PER_BUCKET) {
-                Component message = coolant >= MAX_COOLANT
-                        ? Component.translatable("message.samogon.coolant_full")
-                        : Component.translatable("message.samogon.coolant_no_room");
-                player.displayClientMessage(message, true);
                 return InteractionResult.SUCCESS;
             }
             coolant += COOLANT_PER_BUCKET;
             consume(player, stack, Items.BUCKET);
-            player.displayClientMessage(Component.translatable("message.samogon.coolant_added",
-                    (int) Math.round(coolant / 360.0)), false);
             return InteractionResult.SUCCESS;
         }
         if (still == null) {
             if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
                 Batch wash = BatchData.read(stack);
                 if (wash.abv() < 1 || wash.volume() < 100) {
-                    player.displayClientMessage(Component.translatable("message.samogon.not_wash"), false);
                     return InteractionResult.SUCCESS;
                 }
                 consume(player, stack, Items.GLASS_BOTTLE);
@@ -1563,42 +1494,24 @@ public final class ProcessBlockEntity extends BlockEntity {
                 announcedDone = false;
                 receiver = Fraction.HEARTS;
                 still = new StillRun(wash, fractional);
-                player.displayClientMessage(Component.translatable("message.samogon.distilling"), false);
-                if (coolant <= 0) {
-                    player.displayClientMessage(Component.translatable("message.samogon.need_coolant"), false);
-                }
-                if (Environment.heatStrength(level, worldPosition.below()) <= 0) {
-                    player.displayClientMessage(Component.translatable("message.samogon.need_heat"), false);
-                }
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.distiller_hint"), false);
             return InteractionResult.SUCCESS;
         }
         if (stack.is(Items.GLASS_BOTTLE)) {
             Fraction chosen = effectiveReceiver();
             double available = still.cutVolume(chosen);
             if (available <= 0.0001) {
-                player.displayClientMessage(Component.translatable("message.samogon.no_cut",
-                        Component.translatable("fraction.samogon." + chosen.id())), true);
                 return InteractionResult.SUCCESS;
             }
             int amount = (int) Math.min(BOTTLE, Math.ceil(available));
             Batch portion = still.drain(chosen, amount);
             if (portion == null) {
-                player.displayClientMessage(Component.translatable("message.samogon.no_cut",
-                        Component.translatable("fraction.samogon." + chosen.id())), true);
                 return InteractionResult.SUCCESS;
             }
             consume(player, stack, null);
             giveOrDrop(player, BatchData.create(cutItem(chosen), portion));
             level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 0.6f, 1.0f);
-            player.displayClientMessage(Component.translatable("message.samogon.drained",
-                    Component.translatable("fraction.samogon." + chosen.id()),
-                    f(portion.abv())), true);
-            if (still.finished() && totalCuts() <= 0.0001) {
-                notifyNearby("message.samogon.still_empty");
-            }
             return InteractionResult.SUCCESS;
         }
         if (stack.isEmpty() && player.isShiftKeyDown()) {
@@ -1609,20 +1522,15 @@ public final class ProcessBlockEntity extends BlockEntity {
                 still = null;
                 stage = 0;
                 coolant = 0;
-                player.displayClientMessage(Component.translatable("message.samogon.still_cleared"), false);
                 return InteractionResult.SUCCESS;
             }
             if (!still.fractional()) {
-                player.displayClientMessage(Component.translatable("message.samogon.whole_mode"), true);
                 return InteractionResult.SUCCESS;
             }
             receiver = receiver == Fraction.HEADS ? Fraction.HEARTS
                     : receiver == Fraction.HEARTS ? Fraction.TAILS : Fraction.HEADS;
-            player.displayClientMessage(Component.translatable("message.samogon.receiver",
-                    Component.translatable("fraction.samogon." + receiver.id())), true);
             return InteractionResult.SUCCESS;
         }
-        showStatus(player);
         return InteractionResult.SUCCESS;
     }
 
@@ -1631,7 +1539,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
                 Batch feed = BatchData.read(stack);
                 if (feed.abv() < 1 || feed.volume() < 10) {
-                    player.displayClientMessage(Component.translatable("message.samogon.not_wash"), false);
                     return InteractionResult.SUCCESS;
                 }
                 consume(player, stack, Items.GLASS_BOTTLE);
@@ -1640,39 +1547,31 @@ public final class ProcessBlockEntity extends BlockEntity {
                 settle = 0;
                 columnRunsLeft = 0;
                 sieve = false;
-                player.displayClientMessage(Component.translatable("message.samogon.rectifying_hint"), false);
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.rectifier_hint"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 1 && !sieve && stack.is(ModItems.MOLECULAR_SIEVE.get())) {
             if (batch == null) {
                 stage = 0;
                 settle = 0;
-                player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
                 return InteractionResult.SUCCESS;
             }
             if (!canUseSieve()) {
-                player.displayClientMessage(Component.translatable("message.samogon.sieve_early"), false);
                 return InteractionResult.SUCCESS;
             }
             consume(player, stack, null);
             sieve = true;
-            player.displayClientMessage(Component.translatable("message.samogon.sieve_added"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 1) {
-            showStatus(player);
             return InteractionResult.SUCCESS;
         }
         if (stage == 3) {
-            showBusy(player);
             return InteractionResult.SUCCESS;
         }
         if (stage == 4) {
             if (batch == null) {
-                player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
                 return InteractionResult.SUCCESS;
             }
             Item output = batch.abv() >= 99 ? ModItems.ANHYDROUS_SPIRIT.get() : ModItems.NEUTRAL_SPIRIT.get();
@@ -1686,37 +1585,30 @@ public final class ProcessBlockEntity extends BlockEntity {
             if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
                 Batch feed = BatchData.read(stack);
                 if (feed.abv() < 1) {
-                    player.displayClientMessage(Component.translatable("message.samogon.not_wash"), false);
                     return InteractionResult.SUCCESS;
                 }
                 batch = feed;
                 stage = 1;
                 consume(player, stack, Items.GLASS_BOTTLE);
-                player.displayClientMessage(Component.translatable("message.samogon.filter_hint"), false);
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.filter_hint"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 1 && stack.is(ModItems.ACTIVATED_CHARCOAL.get())) {
             if (batch == null) {
                 stage = 0;
-                player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
                 return InteractionResult.SUCCESS;
             }
             consume(player, stack, null);
             stage = 3;
             progress = 0;
             duration = FILTER_TICKS;
-            player.displayClientMessage(Component.translatable("message.samogon.filtering"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 2 || stage == 1) {
-            player.displayClientMessage(Component.translatable("message.samogon.add_charcoal"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 3) {
-            showBusy(player);
             return InteractionResult.SUCCESS;
         }
         return bottleSmall(player, stack, ModItems.FILTERED_SPIRIT.get());
@@ -1727,42 +1619,34 @@ public final class ProcessBlockEntity extends BlockEntity {
             if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
                 Batch feed = BatchData.read(stack);
                 if (feed.abv() < 1) {
-                    player.displayClientMessage(Component.translatable("message.samogon.not_wash"), false);
                     return InteractionResult.SUCCESS;
                 }
                 batch = feed;
                 stage = 1;
                 blendComposition = "";
                 consume(player, stack, Items.GLASS_BOTTLE);
-                player.displayClientMessage(Component.translatable("message.samogon.blend_hint"), false);
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.blend_hint"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 1) {
             if (batch == null) {
                 stage = 0;
                 progress = 0;
-                player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
                 return InteractionResult.SUCCESS;
             }
             if (stack.isEmpty()) {
                 if (player.isShiftKeyDown()) {
                     startBlending(player);
-                } else {
-                    showStatus(player);
                 }
                 return InteractionResult.SUCCESS;
             }
             if (addBlendAdditive(player, stack)) {
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.blend_hint"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 3) {
-            showBusy(player);
             return InteractionResult.SUCCESS;
         }
         return bottleSmall(player, stack, blendOutput());
@@ -1773,41 +1657,33 @@ public final class ProcessBlockEntity extends BlockEntity {
             if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
                 Batch feed = BatchData.read(stack);
                 if (feed.abv() <= 40) {
-                    player.displayClientMessage(Component.translatable("message.samogon.dilute_needed"), false);
                     return InteractionResult.SUCCESS;
                 }
                 if (!fitsDilutionBasin(feed)) {
-                    player.displayClientMessage(Component.translatable("message.samogon.dilution_failed"), false);
                     return InteractionResult.SUCCESS;
                 }
                 batch = feed;
                 stage = 1;
                 consume(player, stack, Items.GLASS_BOTTLE);
-                player.displayClientMessage(Component.translatable("message.samogon.dilution_hint"), false);
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.dilution_basin_hint"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 1) {
             if (stack.is(Items.WATER_BUCKET)) {
                 if (batch == null) {
                     stage = 0;
-                    player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
                     return InteractionResult.SUCCESS;
                 }
                 consume(player, stack, Items.BUCKET);
                 stage = 3;
                 progress = 0;
                 duration = DILUTION_TICKS;
-                player.displayClientMessage(Component.translatable("message.samogon.diluting"), false);
                 return InteractionResult.SUCCESS;
             }
-            showStatus(player);
             return InteractionResult.SUCCESS;
         }
         if (stage == 3) {
-            showBusy(player);
             return InteractionResult.SUCCESS;
         }
         return bottleSmall(player, stack, ModItems.DILUTED_SPIRIT.get());
@@ -1818,23 +1694,19 @@ public final class ProcessBlockEntity extends BlockEntity {
             if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
                 Batch feed = BatchData.read(stack);
                 if (!Simulation.canAge(feed.abv())) {
-                    player.displayClientMessage(Component.translatable("message.samogon.strength_range"), false);
                     return InteractionResult.SUCCESS;
                 }
                 batch = feed;
                 stage = 1;
                 consume(player, stack, Items.GLASS_BOTTLE);
-                player.displayClientMessage(Component.translatable("message.samogon.cask_hint"), false);
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.cask_hint"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 1) {
             if (batch == null) {
                 stage = 0;
                 progress = 0;
-                player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
                 return InteractionResult.SUCCESS;
             }
             if (stack.is(ModItems.OAK_CHIPS.get())) {
@@ -1842,14 +1714,11 @@ public final class ProcessBlockEntity extends BlockEntity {
                 stage = 3;
                 progress = 0;
                 duration = AGE_TICKS;
-                player.displayClientMessage(Component.translatable("message.samogon.aging"), false);
                 return InteractionResult.SUCCESS;
             }
-            player.displayClientMessage(Component.translatable("message.samogon.add_oak"), false);
             return InteractionResult.SUCCESS;
         }
         if (stage == 3) {
-            showBusy(player);
             return InteractionResult.SUCCESS;
         }
         return bottleSmall(player, stack, ModItems.OAK_AGED_SPIRIT.get());
@@ -1969,35 +1838,29 @@ public final class ProcessBlockEntity extends BlockEntity {
 
     private InteractionResult bottleJar(Player player, ItemStack stack, Item item) {
         if (!stack.is(Items.GLASS_BOTTLE)) {
-            player.displayClientMessage(Component.translatable("message.samogon.ready_bottle"), false);
             return InteractionResult.SUCCESS;
         }
         if (batch == null) {
-            player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
             return InteractionResult.SUCCESS;
         }
         Batch portion = takePortion(JAR);
         consume(player, stack, null);
         giveOrDrop(player, BatchData.create(item, portion));
         level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 0.7f, 0.9f);
-        player.displayClientMessage(Component.translatable("message.samogon.filled_jar", f(portion.volume())), true);
         return InteractionResult.SUCCESS;
     }
 
     private InteractionResult bottleSmall(Player player, ItemStack stack, Item item) {
         if (!stack.is(Items.GLASS_BOTTLE)) {
-            showStatus(player);
             return InteractionResult.SUCCESS;
         }
         if (batch == null) {
-            player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
             return InteractionResult.SUCCESS;
         }
         Batch portion = takePortion(BOTTLE);
         consume(player, stack, null);
         giveOrDrop(player, BatchData.create(item, portion));
         level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 0.7f, 1.0f);
-        player.displayClientMessage(Component.translatable("message.samogon.filled_jar", f(portion.volume())), true);
         return InteractionResult.SUCCESS;
     }
 
@@ -2027,61 +1890,6 @@ public final class ProcessBlockEntity extends BlockEntity {
     }
 
     // === HELPERS ===
-
-    private void showBusy(Player player) {
-        int percent = progressPercent();
-        player.displayClientMessage(Component.translatable("message.samogon.busy", percent), true);
-    }
-
-    private void showStatus(Player player) {
-        if (kind() == ProcessBlock.Kind.TASTING) {
-            showTastingStatus(player);
-            return;
-        }
-        player.displayClientMessage(Component.translatable("message.samogon.status.header",
-                getBlockState().getBlock().getName()), false);
-        if (batch == null && still == null) {
-            player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
-            return;
-        }
-        switch (kind()) {
-            case MASHING -> player.displayClientMessage(Component.translatable("message.samogon.status.mash",
-                    progressPercent(), batch == null ? 0 : (int) batch.volume(),
-                    batch == null ? Quality.label(0) : Quality.label(batch.quality())), false);
-            case FERMENTATION -> player.displayClientMessage(Component.translatable("message.samogon.status.ferment",
-                    progressPercent(), f(batch == null ? 0 : batch.volume()),
-                    f(batch == null ? 0 : batch.abv()), f(ambient)), false);
-            case DISTILLER -> {
-                if (still == null) {
-                    player.displayClientMessage(Component.translatable("message.samogon.status.empty"), false);
-                    return;
-                }
-                player.displayClientMessage(Component.translatable("message.samogon.status.still",
-                        f(still.temperature()), f(still.abv()), f(still.pressure()),
-                        Component.translatable("fraction.samogon." + effectiveReceiver().id()),
-                        f(still.cutVolume(Fraction.HEADS)),
-                        f(still.cutVolume(Fraction.HEARTS)), f(still.cutVolume(Fraction.TAILS))), false);
-                player.displayClientMessage(Component.translatable("message.samogon.status.coolant",
-                        (int) Math.round(coolant / 360.0)), false);
-            }
-            case RECTIFIER -> player.displayClientMessage(Component.translatable("message.samogon.status.rectify",
-                    progressPercent(), batch == null ? 0 : (int) batch.volume(),
-                    f(batch == null ? 0 : batch.abv()), sieve ? Component.translatable("message.samogon.yes")
-                            : Component.translatable("message.samogon.no")), false);
-            case FILTER -> player.displayClientMessage(Component.translatable("message.samogon.status.filter",
-                    progressPercent(), f(batch == null ? 0 : batch.volume()),
-                    f(batch == null ? 0 : batch.impurities())), false);
-            case BLENDING -> player.displayClientMessage(Component.translatable("message.samogon.status.blend",
-                    progressPercent(), f(batch == null ? 0 : batch.abv()),
-                    Component.translatable("blend.samogon." + (agingKind.isEmpty() ? "none" : agingKind))), false);
-            case DILUTION -> player.displayClientMessage(Component.translatable("message.samogon.status.dilute",
-                    progressPercent(), f(batch == null ? 0 : batch.abv()),
-                    f(batch == null ? 0 : batch.volume())), false);
-            case AGING -> player.displayClientMessage(Component.translatable("message.samogon.status.aging",
-                    progressPercent(), f(batch == null ? 0 : batch.abv()),
-                    batch == null ? 0 : batch.age()), false);
-        }
-    }
 
     private void reportTemperature(Player player) {
         double heat = Environment.heatStrength(level, worldPosition.below());
@@ -2138,17 +1946,6 @@ public final class ProcessBlockEntity extends BlockEntity {
 
     private void giveOrDrop(Player player, ItemStack stack) {
         if (!player.addItem(stack)) player.drop(stack, false);
-    }
-
-    private void notifyNearby(String key, Object... args) {
-        if (level == null) return;
-        Component message = Component.translatable(key, args);
-        for (Player player : level.players()) {
-            if (player.distanceToSqr(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
-                    worldPosition.getZ() + 0.5) < 256) {
-                player.displayClientMessage(message, false);
-            }
-        }
     }
 
     private static String f(double value) {
