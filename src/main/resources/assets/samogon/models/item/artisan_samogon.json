@@ -1,3 +1,9 @@
 {
-  "parent": "samogon:item/berry_tincture"
+  "parent": "samogon:item/berry_tincture",
+  "overrides": [
+    { "predicate": { "custom_model_data": 1 }, "model": "samogon:item/artisan_samogon_cocoa" },
+    { "predicate": { "custom_model_data": 2 }, "model": "samogon:item/artisan_samogon_melon" },
+    { "predicate": { "custom_model_data": 3 }, "model": "samogon:item/artisan_samogon_carrot" },
+    { "predicate": { "custom_model_data": 4 }, "model": "samogon:item/artisan_samogon_cactus" }
+  ]
 }

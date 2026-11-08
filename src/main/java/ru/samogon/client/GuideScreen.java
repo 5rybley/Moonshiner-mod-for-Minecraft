@@ -3,10 +3,12 @@ package ru.samogon.client;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomModelData;
 import ru.samogon.process.SpiritType;
 import ru.samogon.registry.ModBlocks;
 import ru.samogon.registry.ModItems;
@@ -366,13 +368,23 @@ public final class GuideScreen extends Screen {
                     new ItemStack(ModItems.OAK_AGED_SPIRIT.get());
             case VODKA -> new ItemStack(ModItems.DILUTED_SPIRIT.get());
             case SPIRIT -> new ItemStack(ModItems.NEUTRAL_SPIRIT.get());
-            case COCOA -> new ItemStack(Items.COCOA_BEANS);
-            case MELON -> new ItemStack(Items.MELON_SLICE);
-            case CARROT -> new ItemStack(Items.CARROT);
-            case CACTUS -> new ItemStack(Items.CACTUS);
+            case COCOA -> artisanBottle(1);
+            case MELON -> artisanBottle(2);
+            case CARROT -> artisanBottle(3);
+            case CACTUS -> artisanBottle(4);
             case TINCTURE -> new ItemStack(ModItems.BERRY_TINCTURE.get());
             default -> new ItemStack(ModItems.SAMOGON.get());
         };
+    }
+
+    /**
+     * An artisan bottle with a custom_model_data variant, so a recipe shows a
+     * bottle in the drink's own colour instead of its raw material.
+     */
+    private ItemStack artisanBottle(int variant) {
+        ItemStack stack = new ItemStack(ModItems.SAMOGON.get());
+        stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(variant));
+        return stack;
     }
 
     // === PAGE BODIES ===

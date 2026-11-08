@@ -30,6 +30,12 @@ public class GenerateAssets {
             "aging_cask", "oak maturation · no heat",
             "tasting_table", "tasting flight · no heat");
     static final Map<String, List<Box>> ITEMS = new LinkedHashMap<>();
+    /**
+     * Extra item models that are not standalone items: the artisan bottle uses
+     * them as custom_model_data variants, so they must not appear in the
+     * creative catalogue preview or the shipping item list.
+     */
+    static final Map<String, List<Box>> EXTRA_ITEMS = new LinkedHashMap<>();
     static final String[] DIRECTIONS = {"down", "up", "north", "south", "west", "east"};
     /** Horizontal facings a machine can face, with the block model y rotation that turns its north front to each. */
     static final String[] FACINGS = {"north", "east", "south", "west"};
@@ -156,6 +162,15 @@ public class GenerateAssets {
         material("yeast_label", 0x788c64);
         material("berry_label", 0x914553);
         material("seal", 0x913b36);
+        // Bottle variants for the four raw-material spirits added in 0.0.2.
+        material("cocoa", 0x6b4226);
+        material("cocoa_label", 0x8a5a33);
+        material("melon", 0x77a94e);
+        material("melon_label", 0x4f7a3a);
+        material("carrot", 0xc9772b);
+        material("carrot_label", 0x9c561f);
+        material("cactus", 0x4f8f68);
+        material("cactus_label", 0x356b4a);
     }
 
     static void createAtlas() throws IOException {
@@ -634,6 +649,10 @@ public class GenerateAssets {
             boolean jar = i <= 1;
             ITEMS.put(bottles[i], bottle(fluids[i], labels[i], jar));
         }
+        EXTRA_ITEMS.put("artisan_samogon_cocoa", bottle("cocoa", "cocoa_label", false));
+        EXTRA_ITEMS.put("artisan_samogon_melon", bottle("melon", "melon_label", false));
+        EXTRA_ITEMS.put("artisan_samogon_carrot", bottle("carrot", "carrot_label", false));
+        EXTRA_ITEMS.put("artisan_samogon_cactus", bottle("cactus", "cactus_label", false));
 
         List<Box> m = new ArrayList<>();
         box(m, "cream", 4, 2, 5, 12, 12, 11);
@@ -806,6 +825,7 @@ public class GenerateAssets {
 
     static void writeItemModels() throws IOException {
         for (var entry : ITEMS.entrySet()) writeModel("item/" + entry.getKey(), entry.getValue(), true);
+        for (var entry : EXTRA_ITEMS.entrySet()) writeModel("item/" + entry.getKey(), entry.getValue(), true);
     }
 
     static void writeModel(String path, List<Box> boxes, boolean item) throws IOException {
