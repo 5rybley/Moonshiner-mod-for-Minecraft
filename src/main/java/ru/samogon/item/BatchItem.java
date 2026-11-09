@@ -78,25 +78,34 @@ public final class BatchItem extends Item {
 
     /**
      * Drink type derived from the batch history. The fixed classic tinctures
-     * keep their identity; the oak-aged bottle is classified by its origin and
-     * process like any other aged spirit.
+     * keep their identity, except when the blend itself has become a distinct
+     * drink (gin, absinthe or liqueur). The oak-aged bottle is classified by
+     * its origin and process like any other aged spirit.
      */
     public SpiritType typeOf(Batch batch) {
         if (tincture == Tincture.OAK) return SpiritType.of(batch);
-        if (tincture != Tincture.NONE) return SpiritType.TINCTURE;
-        return SpiritType.of(batch);
+        SpiritType derived = SpiritType.of(batch);
+        if (tincture == Tincture.NONE) return derived;
+        return switch (derived) {
+            case GIN, ABSINTHE, LIQUEUR, TINCTURE -> derived;
+            default -> SpiritType.TINCTURE;
+        };
     }
 
     @Override
     public Component getName(ItemStack stack) {
         // The name always reflects what the bottle actually is: vodka, whiskey,
         // chacha and so on. A blended artisan bottle puts the type in front of
-        // its composition-derived name, for example "Chacha «Sunset wind»".
-        // The fixed tincture bottles keep their own name.
-        if (!technical && (tincture == Tincture.NONE || tincture == Tincture.OAK) && BatchData.has(stack)) {
+        // its composition-derived name, for example "Gin «Sunset wind»".
+        // The fixed tincture bottles keep their own name, unless the blend has
+        // become a distinct drink such as gin, absinthe or liqueur.
+        if (!technical && BatchData.has(stack)) {
             Batch batch = BatchData.read(stack);
             SpiritType type = typeOf(batch);
-            if (type.isDrink()) {
+            boolean ownTinctureName = tincture != Tincture.NONE && tincture != Tincture.OAK
+                    && type != SpiritType.GIN && type != SpiritType.ABSINTHE
+                    && type != SpiritType.LIQUEUR;
+            if (!ownTinctureName && type.isDrink()) {
                 if (batch.composition().isBlank()) {
                     if (tincture == Tincture.NONE) return Component.translatable(type.translationKey());
                 } else {

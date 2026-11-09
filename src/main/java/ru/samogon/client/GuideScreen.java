@@ -368,6 +368,9 @@ public final class GuideScreen extends Screen {
                     new ItemStack(ModItems.OAK_AGED_SPIRIT.get());
             case VODKA -> new ItemStack(ModItems.DILUTED_SPIRIT.get());
             case SPIRIT -> new ItemStack(ModItems.NEUTRAL_SPIRIT.get());
+            case GIN -> new ItemStack(ModItems.SAMOGON.get());
+            case ABSINTHE -> artisanBottle(2);
+            case LIQUEUR -> artisanBottle(1);
             case COCOA -> artisanBottle(1);
             case MELON -> artisanBottle(2);
             case CARROT -> artisanBottle(3);
@@ -1002,6 +1005,9 @@ public final class GuideScreen extends Screen {
         WHISKEY(SpiritType.WHISKEY, true, "grain", "mash", "ferment", "distill_cuts", "oak"),
         VODKA(SpiritType.VODKA, true, "grain", "distill_cuts", "rectify", "filter", "dilute"),
         SPIRIT(SpiritType.SPIRIT, true, "grain", "distill_cuts", "rectify"),
+        GIN(SpiritType.GIN, false, "any", "distill_cuts", "rectify", "blend_botanical", "dilute"),
+        ABSINTHE(SpiritType.ABSINTHE, false, "any", "distill_cuts", "rectify", "blend_wormwood"),
+        LIQUEUR(SpiritType.LIQUEUR, false, "any", "distill_cuts", "dilute", "sweeten"),
         BRANDY(SpiritType.BRANDY, false, "berry", "mash", "ferment", "distill_cuts", "oak"),
         COGNAC(SpiritType.COGNAC, false, "berry", "mash", "ferment", "distill_cuts", "distill2", "oak"),
         SCOTCH(SpiritType.SCOTCH, false, "grain", "mash", "ferment", "distill_cuts", "distill2", "oak"),

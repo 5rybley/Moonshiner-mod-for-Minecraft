@@ -53,13 +53,23 @@ public final class SpiritTypeTest {
         expect(SpiritType.SPIRIT, batch(55, 2, true, "grain", 0, "", true, true), "undiluted rectified spirit");
         expect(SpiritType.SPIRIT, batch(40, 2, true, "grain", 1, "", true, true), "oak-aged rectified spirit");
 
-        // Aromatic blends keep the base type: additives only change the name.
-        expect(SpiritType.CHACHA, batch(40, 1, false, "berry", 0, "sweet_berries", false, true), "berry blend stays chacha");
-        expect(SpiritType.MOONSHINE, batch(40, 1, false, "grain", 0, "sweet_berries", false, true), "grain blend stays moonshine");
+        // Aromatic blends before oak aging become their own drinks. Gin and
+        // absinthe need column-rectified spirit; absinthe additionally needs
+        // wormwood, which the mod represents with ferns.
+        expect(SpiritType.GIN, batch(40, 2, true, "grain", 0, "botanical_bundle", true, true), "gin");
+        expect(SpiritType.GIN, batch(70, 2, false, "grain", 0, "botanical_bundle", true, true), "strong gin");
+        expect(SpiritType.ABSINTHE, batch(40, 2, true, "grain", 0, "botanical_bundle,fern", true, true), "absinthe");
+        expect(SpiritType.ABSINTHE, batch(70, 2, false, "grain", 0, "botanical_bundle,large_fern", true, true), "strong absinthe");
+        expect(SpiritType.LIQUEUR, batch(40, 1, false, "berry", 0, "honey_bottle,sweet_berries", false, true), "berry liqueur");
+        expect(SpiritType.LIQUEUR, batch(40, 1, false, "grain", 0, "sugar,sweet_berries", false, true), "sugar liqueur");
+        expect(SpiritType.TINCTURE, batch(40, 1, false, "berry", 0, "sweet_berries", false, true), "berry tincture");
+        expect(SpiritType.TINCTURE, batch(70, 1, false, "grain", 0, "sweet_berries", false, true), "strong berry tincture");
+        expect(SpiritType.TINCTURE, batch(40, 1, false, "grain", 0, "botanical_bundle,apple", false, true), "pot-still botanical tincture");
+
+        // Oak aging still defines the aged family, even with additives.
         expect(SpiritType.WHISKEY, batch(40, 1, false, "grain", 1, "apple", false, true), "oak grain blend stays whiskey");
         expect(SpiritType.COGNAC, batch(40, 2, false, "berry", 1, "honey_bottle", false, true), "oak berry blend stays cognac");
-        expect(SpiritType.VODKA, batch(40, 2, true, "grain", 0, "botanical_bundle", true, true), "botanical blend stays vodka");
-        expect(SpiritType.SPIRIT, batch(96, 2, false, "grain", 0, "botanical_bundle", true, true), "unfiltered blend stays spirit");
+        expect(SpiritType.SPIRIT, batch(40, 2, true, "grain", 1, "", true, true), "oak-aged rectified spirit");
 
 // Raw-material potential is exposed without any Minecraft types.
         require(SpiritType.potentialKey("grain").equals("potential.samogon.grain"),
@@ -82,6 +92,14 @@ public final class SpiritTypeTest {
                 "cactus potential key");
         require(SpiritType.potentialKey("unobtainium").equals("potential.samogon.sugar"),
                 "unknown origins fall back to sugar potential");
+
+        // The aromatic helpers are pure Java and drive the blend classifier.
+        require(AromaFamily.has("botanical_bundle,fern", "fern"), "additive detection");
+        require(AromaFamily.hasAnyOf("botanical_bundle,large_fern", "fern", "large_fern"),
+                "herb detection");
+        require(AromaFamily.hasFamily("honey_bottle,sweet_berries", AromaFamily.Family.HONEY),
+                "honey family detection");
+        require(AromaFamily.additiveCount("sugar,sweet_berries") == 2, "additive count");
 
         // The flags must survive every stage of the chain.
         Batch wash = Simulation.ferment(Simulation.mash("berry", 4), 2.0, 19.0);

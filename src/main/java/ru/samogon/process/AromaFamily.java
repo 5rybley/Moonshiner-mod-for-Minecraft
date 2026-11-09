@@ -181,6 +181,43 @@ public final class AromaFamily {
                 .orElse(Family.SWEET);
     }
 
+    /** True when the composition contains a specific additive id. */
+    public static boolean has(String composition, String additiveId) {
+        if (composition == null || composition.isBlank() || additiveId == null) return false;
+        for (String raw : composition.split(",")) {
+            if (raw.strip().equals(additiveId)) return true;
+        }
+        return false;
+    }
+
+    /** True when the composition contains any of the given additive ids. */
+    public static boolean hasAnyOf(String composition, String... additiveIds) {
+        if (additiveIds == null) return false;
+        for (String id : additiveIds) {
+            if (has(composition, id)) return true;
+        }
+        return false;
+    }
+
+    /** True when at least one additive of the family is present. */
+    public static boolean hasFamily(String composition, Family family) {
+        if (composition == null || composition.isBlank() || family == null) return false;
+        for (String raw : composition.split(",")) {
+            if (FAMILIES.get(raw.strip()) == family) return true;
+        }
+        return false;
+    }
+
+    /** Number of recognised aromatic additives in the composition. */
+    public static int additiveCount(String composition) {
+        if (composition == null || composition.isBlank()) return 0;
+        int count = 0;
+        for (String raw : composition.split(",")) {
+            if (FAMILIES.containsKey(raw.strip())) count++;
+        }
+        return count;
+    }
+
     /** The aura an aromatic family feeds, one of {@link #AURAS}. */
     public static String aura(Family family) {
         return switch (family) {

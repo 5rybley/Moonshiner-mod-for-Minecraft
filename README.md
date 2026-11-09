@@ -6,7 +6,7 @@ Drinks are not crafted here: you carry them through the whole process, and every
 
 | | |
 |---|---|
-| **Version** | `0.0.2 beta` |
+| **Version** | `0.0.3 beta` |
 | **Minecraft** | `1.21.1` |
 | **Loader** | NeoForge `21.1.176+` |
 | **Java** | 21 |
@@ -23,7 +23,7 @@ Drinks are not crafted here: you carry them through the whole process, and every
 - **Five-star quality** - the internal 0-100 score is shown everywhere as 0-5 stars with halves, and any operation may be repeated: filter, blend, infuse, distill or age the same bottle as often as you like.
 - **Process physics instead of a progress bar** - boiling point of the ethanol–water mix, vapour enrichment, approach to the azeotrope, fermentation temperature, mandatory water cooling, mass balance.
 - **Data carried in the item** - strength, quality, impurities, origin, number of distillations, fraction-separation flag, column passes, filtration, age and blend composition survive every transfer and are stored in the bottle.
-- **Procedural spirits** - 26 additives, up to five per blend, 192 name/aroma variants; the same set always yields the same drink, and blending keeps the base type.
+- **Procedural spirits** - 26 additives, up to five per blend, 192 name/aroma variants; the same set always yields the same drink. An unaged blend is classified by its additives: rectified spirit with a botanical bundle is gin, wormwood makes absinthe, sugar plus berries or honey at 40% ABV makes liqueur, and any other maceration is a tincture.
 - **A tasting table** - set a bottle in the drink slot and a hydrometer beside it to read the derived type, strength, quality and impurities, plus the intoxication level I-V, duration, infusion aura and any technical-fraction debuffs. The sample is never consumed.
 - **Intoxication I-V** with nausea, vomiting (IV-V), staggering, drunken resilience, drunken strike, arrow deflection and four infusion types.
 - **Nine working machines and a decorative condenser**, 33 items with original voxel models, parchment-and-oak GUI panels, an illustrated ten-chapter in-game guide with a recipe book that unlocks as you distil.
@@ -49,7 +49,7 @@ JDK 21 must be installed and `JAVA_HOME` set to it. From the project root:
 .\gradlew.bat build
 ```
 
-The artifact appears in `build/libs/moonshiner-0.0.2-beta.jar`.
+The artifact appears in `build/libs/moonshiner-0.0.3-beta.jar`.
 
 Verification tasks:
 
@@ -102,10 +102,12 @@ The type is never picked in a menu - it is derived from the production technolog
 | **Rum** | Oak-aged sugar hearts | A sugar distillate matured on oak; warm and caramel-sweet |
 | **Vodka** | Rectified, filtered and diluted spirit | Rectified, filtered spirit diluted to drinking strength |
 | **Spirit** | Rectified spirit before filtration or dilution | High-strength rectified spirit: dilute or reprocess it |
+| **Gin** | Rectified spirit macerated with a botanical bundle | A dry, juniper-forward botanical spirit |
+| **Absinthe** | Rectified spirit macerated with a botanical bundle and wormwood (ferns) | A herbal, aniseed botanical spirit with a deep green colour |
+| **Liqueur** | Spirit at 40% ABV blended with sugar and berries or honey | A sweet, aromatic drink of lowered strength |
+| **Tincture** | Any other unaged spirit macerated with berries, herbs, spices or fruit | A flavoured spirit; the classic single-ingredient tinctures keep their own bottles |
 
-Blending additives only change the name and aroma; the base type is preserved.
-
-A few further types (gin, absinthe, liqueur, tincture) already carry names and descriptions but are placeholders: the current production chain cannot reach them yet. Calvados, cachaca, potato spirit, beet spirit and mead are now reachable from the added raw materials.
+Blending before oak aging now changes the type: rectified spirit plus a botanical bundle is gin, adding ferns makes absinthe, and sugar plus berries or honey at 40% ABV makes liqueur. Any other unaged maceration is a tincture. Oak-aged blends keep the aged identity, so a whiskey with apple stays whiskey.
 
 ## Tasting table
 

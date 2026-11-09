@@ -886,20 +886,30 @@ public final class ProcessBlockEntity extends BlockEntity {
      */
     private Item blendOutput() {
         if ("dilute".equals(agingKind)) return ModItems.DILUTED_SPIRIT.get();
-        if (batch != null && !batch.composition().isBlank()) {
-            List<BlendCatalog.Additive> additives = BlendCatalog.decode(batch.composition());
-            if (additives.size() == 1) {
-                return switch (additives.get(0).id()) {
-                    case "sweet_berries" -> ModItems.BERRY_TINCTURE.get();
-                    case "honey_bottle" -> ModItems.HONEY_TINCTURE.get();
-                    case "botanical_bundle" -> ModItems.BOTANICAL_TINCTURE.get();
-                    case "cocoa_beans", "nether_wart" -> ModItems.SPICED_TINCTURE.get();
-                    case "apple" -> ModItems.FRUIT_TINCTURE.get();
-                    case "kelp", "dried_kelp" -> ModItems.MARINE_TINCTURE.get();
-                    default -> ModItems.SAMOGON.get();
-                };
+        if (batch != null) {
+            // Gin, absinthe and liqueur are one artisan bottle whose dynamic
+            // name, composition and colour come from the batch. Only the
+            // classic single-ingredient tinctures keep their dedicated item.
+            SpiritType type = SpiritType.of(batch);
+            if (type == SpiritType.GIN || type == SpiritType.ABSINTHE
+                    || type == SpiritType.LIQUEUR) {
+                return ModItems.SAMOGON.get();
             }
-            return ModItems.SAMOGON.get();
+            if (!batch.composition().isBlank()) {
+                List<BlendCatalog.Additive> additives = BlendCatalog.decode(batch.composition());
+                if (additives.size() == 1) {
+                    return switch (additives.get(0).id()) {
+                        case "sweet_berries" -> ModItems.BERRY_TINCTURE.get();
+                        case "honey_bottle" -> ModItems.HONEY_TINCTURE.get();
+                        case "botanical_bundle" -> ModItems.BOTANICAL_TINCTURE.get();
+                        case "cocoa_beans", "nether_wart" -> ModItems.SPICED_TINCTURE.get();
+                        case "apple" -> ModItems.FRUIT_TINCTURE.get();
+                        case "kelp", "dried_kelp" -> ModItems.MARINE_TINCTURE.get();
+                        default -> ModItems.SAMOGON.get();
+                    };
+                }
+                return ModItems.SAMOGON.get();
+            }
         }
         return switch (agingKind) {
             case "berry" -> ModItems.BERRY_TINCTURE.get();

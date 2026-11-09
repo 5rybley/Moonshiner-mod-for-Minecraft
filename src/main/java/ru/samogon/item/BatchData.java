@@ -5,7 +5,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.CustomModelData;
 import ru.samogon.process.Simulation.Batch;
+import ru.samogon.process.SpiritType;
 import ru.samogon.registry.ModItems;
 
 public final class BatchData {
@@ -58,6 +60,19 @@ public final class BatchData {
         tag.putBoolean("samogon_cut", batch.cut());
         tag.putInt("samogon_column_runs", batch.columnRuns());
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        // The artisan bottle has coloured variants for the drinks whose look
+        // is part of their identity. Reusing the existing generated models
+        // keeps the asset set unchanged: variant 2 is green, variant 1 amber.
+        if (item == ModItems.SAMOGON.get()) {
+            int variant = switch (SpiritType.of(batch)) {
+                case ABSINTHE -> 2;
+                case LIQUEUR -> 1;
+                default -> 0;
+            };
+            if (variant > 0) {
+                stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(variant));
+            }
+        }
         return stack;
     }
 

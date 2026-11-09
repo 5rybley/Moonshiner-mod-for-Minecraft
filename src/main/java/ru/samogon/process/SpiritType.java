@@ -9,9 +9,12 @@ import ru.samogon.process.Simulation.Batch;
  * times the spirit was distilled, whether it went through the rectification
  * column, charcoal filtration and oak aging.
  *
- * <p>Aromatic additives do not change the type: blending only changes the
- * bottle's name and aroma. A berry distillate stays chacha whether or not the
- * player adds berries, and a grain spirit aged on oak stays whiskey.</p>
+ * <p>Aromatic additives only change the type at the blending table and only
+ * before oak aging: a rectified spirit macerated with a botanical bundle is
+ * gin, the same spirit with wormwood (ferns) is absinthe, a sweetened and
+ * flavoured blend at drinking strength is liqueur, and any other unaged
+ * maceration is a tincture. Oak-aged blends keep the aged identity, so a
+ * whiskey with apple stays whiskey.</p>
  */
 public enum SpiritType {
     /** Unfermented sweet wort: an ingredient, not a drink. */
@@ -69,6 +72,11 @@ public enum SpiritType {
     private final String id;
     private final boolean drink;
 
+    /** The neutral botanical bundle used for gin. */
+    private static final String GIN_BOTANICAL = "botanical_bundle";
+    /** Ferns stand in for wormwood in absinthe. */
+    private static final String[] ABSINTHE_HERBS = {"fern", "large_fern"};
+
     SpiritType(String id, boolean drink) {
         this.id = id;
         this.drink = drink;
@@ -109,10 +117,11 @@ public enum SpiritType {
     /**
      * Classifies a batch by its production technology. First match wins.
      *
-     * <p>Fermented but undistilled liquid is braga. Once distilled, a whole
-     * run without fraction separation stays moonshine no matter the raw
-     * material; only a fractional run unlocks the origin-based family. Column
-     * rectification and oak aging are checked first.</p>
+     * <p>Fermented but undistilled liquid is braga. An unaged aromatic blend
+     * is classified by its additives: gin, absinthe, liqueur or tincture.
+     * Otherwise a whole run without fraction separation stays moonshine no
+     * matter the raw material; only a fractional run unlocks the origin-based
+     * family. Column rectification and oak aging are checked first.</p>
      */
     public static SpiritType of(Batch batch) {
         if (batch == null) return WASH;
@@ -122,17 +131,23 @@ public enum SpiritType {
             return batch.abv() > 0.5 ? BRAGA : WASH;
         }
 
-        // 1. Column rectification: neutral spirit territory.
+        // 1. Aromatic maceration before oak aging. The cask defines the aged
+        //    family, so only unaged blends are classified by their additives.
+        if (batch.oak() <= 0 && !batch.composition().isBlank()) {
+            return macerated(batch);
+        }
+
+        // 2. Column rectification: neutral spirit territory.
         if (batch.rectified()) {
             if (batch.oak() > 0) return SPIRIT;
             if (batch.filtered() && batch.abv() <= 50.0) return VODKA;
             return SPIRIT;
         }
 
-        // 2. No fraction separation: a rough whole-run moonshine.
+        // 3. No fraction separation: a rough whole-run moonshine.
         if (!batch.cut()) return MOONSHINE;
 
-        // 3. Oak aging: the aged-spirit family, chosen by the raw material.
+        // 4. Oak aging: the aged-spirit family, chosen by the raw material.
         if (batch.oak() > 0) {
             return switch (batch.origin()) {
                 case "berry" -> batch.passes() >= 2 ? COGNAC : BRANDY;
@@ -151,7 +166,7 @@ public enum SpiritType {
             };
         }
 
-        // 4. Plain fractionally pot-stilled hearts.
+        // 5. Plain fractionally pot-stilled hearts.
         return switch (batch.origin()) {
             case "berry" -> CHACHA;
             case "cane" -> CACHACA;
@@ -164,5 +179,33 @@ public enum SpiritType {
             case "cactus" -> CACTUS;
             default -> MOONSHINE;
         };
+    }
+
+    /**
+     * Classifies an unaged aromatic blend. A rectified botanical spirit is gin;
+     * adding wormwood (ferns) turns it into absinthe. A sweetened, flavoured
+     * blend at drinking strength is a liqueur. Everything else is a tincture.
+     *
+     * <p>Gin and absinthe require column rectification because the player
+     * macerates the botanicals in neutral spirit after the column. A pot-still
+     * botanical maceration stays a tincture.</p>
+     */
+    private static SpiritType macerated(Batch batch) {
+        String composition = batch.composition();
+        if (batch.rectified() && AromaFamily.has(composition, GIN_BOTANICAL)) {
+            return AromaFamily.hasAnyOf(composition, ABSINTHE_HERBS) ? ABSINTHE : GIN;
+        }
+        boolean sweetened = AromaFamily.hasFamily(composition, AromaFamily.Family.SWEET)
+                || AromaFamily.hasFamily(composition, AromaFamily.Family.HONEY);
+        boolean flavoured = AromaFamily.hasFamily(composition, AromaFamily.Family.BERRY)
+                || AromaFamily.hasFamily(composition, AromaFamily.Family.FRUIT)
+                || AromaFamily.hasFamily(composition, AromaFamily.Family.HONEY)
+                || AromaFamily.hasFamily(composition, AromaFamily.Family.BOTANICAL)
+                || AromaFamily.hasFamily(composition, AromaFamily.Family.SPICE);
+        if (sweetened && flavoured && AromaFamily.additiveCount(composition) >= 2
+                && batch.abv() <= 40.0) {
+            return LIQUEUR;
+        }
+        return TINCTURE;
     }
 }
