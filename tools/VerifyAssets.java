@@ -17,6 +17,8 @@ public final class VerifyAssets {
             "samogon_crate", "tasting_table", "brewery");
     /** Multi-block structures that are built in the world and have no item of their own. */
     static final List<String> STRUCTURES = List.of("aging_barrel");
+    /** Blocks placed directly by a drink item; they have no item or loot table of their own. */
+    static final List<String> DECOR = List.of("placed_drink");
     static final List<String> ITEMS = List.of("sweet_wort", "fermented_mash", "heads_fraction",
             "hearts_fraction", "tails_fraction", "neutral_spirit", "anhydrous_spirit", "filtered_spirit",
             "diluted_spirit", "berry_tincture", "honey_tincture", "botanical_tincture", "oak_aged_spirit",
@@ -84,6 +86,7 @@ public final class VerifyAssets {
         }
         List<String> allBlocks = new ArrayList<>(BLOCKS);
         allBlocks.addAll(STRUCTURES);
+        allBlocks.addAll(DECOR);
         for (String id : allBlocks) {
             String state = read(ASSETS.resolve("blockstates/" + id + ".json"));
             for (Matcher matcher = MODEL_REF.matcher(state); matcher.find(); ) {
@@ -150,6 +153,7 @@ public final class VerifyAssets {
         parseLang(Path.of("src/main/resources/assets/samogon/lang/en_us.json"));
         for (String id : BLOCKS) require(LANG_KEYS.contains("block.samogon." + id), "missing language key for block " + id);
         for (String id : STRUCTURES) require(LANG_KEYS.contains("block.samogon." + id), "missing language key for block " + id);
+        for (String id : DECOR) require(LANG_KEYS.contains("block.samogon." + id), "missing language key for block " + id);
         for (String id : ITEMS) require(LANG_KEYS.contains("item.samogon." + id), "missing language key for item " + id);
         for (String advancement : List.of("root.title", "root.description", "first_still.title",
                 "first_still.description", "first_hearts.title", "first_hearts.description",

@@ -1,0 +1,22 @@
+{
+  "credit": "Invisible placeholder model; the drink itself is drawn by the block entity renderer.",
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "samogon:block/materials/glass",
+    "glass": "samogon:block/materials/glass"
+  },
+  "elements": [
+    {
+      "from": [7.75, 0.0, 7.75],
+      "to": [8.25, 1.0, 8.25],
+      "faces": {
+        "north": {"uv": [0, 0, 16, 16], "texture": "#glass"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#glass"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#glass"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#glass"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#glass"},
+        "down": {"uv": [0, 0, 16, 16], "texture": "#glass"}
+      }
+    }
+  ]
+}

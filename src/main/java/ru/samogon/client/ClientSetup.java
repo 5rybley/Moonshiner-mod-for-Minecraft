@@ -36,6 +36,7 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(ModBlocks.SAMOGON_CRATE_ENTITY.get(), SamogonCrateRenderer::new);
+        event.registerBlockEntityRenderer(ModBlocks.PLACED_DRINK_ENTITY.get(), PlacedDrinkRenderer::new);
         // The vomited soul-sand lump is drawn as a small dropped-block-sized cube.
         event.registerEntityRenderer(ModEntityTypes.PUKE.get(), PukeBlockRenderer::new);
     }

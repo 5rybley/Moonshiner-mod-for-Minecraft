@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -18,6 +19,8 @@ import ru.samogon.block.BreweryBlock;
 import ru.samogon.block.BreweryBlockEntity;
 import ru.samogon.block.CondenserBlock;
 import ru.samogon.block.CondenserBlockEntity;
+import ru.samogon.block.PlacedDrinkBlock;
+import ru.samogon.block.PlacedDrinkBlockEntity;
 import ru.samogon.block.ProcessBlock;
 import ru.samogon.block.ProcessBlockEntity;
 import ru.samogon.block.SamogonCrateBlock;
@@ -62,6 +65,14 @@ public final class ModBlocks {
     public static final DeferredItem<Item> SAMOGON_CRATE_ITEM = BLOCK_ITEMS.register("samogon_crate",
             () -> new SamogonCrateItem(SAMOGON_CRATE.get(), new Item.Properties().stacksTo(1)));
     /**
+     * A finished drink set down in the world. It has no item of its own: the
+     * drink stack is placed with sneak-right-click and returned when broken.
+     */
+    public static final DeferredBlock<Block> PLACED_DRINK = BLOCKS.register("placed_drink",
+            () -> new PlacedDrinkBlock(BlockBehaviour.Properties.of()
+                    .instabreak().noCollission().noOcclusion().sound(SoundType.WOOD)
+                    .pushReaction(PushReaction.BLOCK)));
+    /**
      * The merged 2x2x2 barrel. It has no item of its own: eight
      * {@link #AGING_CASK} blocks placed as a cube build it, and breaking it
      * returns those eight casks.
@@ -90,6 +101,9 @@ public final class ModBlocks {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SamogonCrateBlockEntity>> SAMOGON_CRATE_ENTITY =
             BLOCK_ENTITIES.register("samogon_crate", () -> BlockEntityType.Builder.of(
                     SamogonCrateBlockEntity::new, SAMOGON_CRATE.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PlacedDrinkBlockEntity>> PLACED_DRINK_ENTITY =
+            BLOCK_ENTITIES.register("placed_drink", () -> BlockEntityType.Builder.of(
+                    PlacedDrinkBlockEntity::new, PLACED_DRINK.get()).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CondenserBlockEntity>> CONDENSER_ENTITY =
             BLOCK_ENTITIES.register("condenser", () -> BlockEntityType.Builder.of(
                     CondenserBlockEntity::new, CONDENSER.get()).build(null));

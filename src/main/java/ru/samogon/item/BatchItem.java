@@ -2,10 +2,14 @@ package ru.samogon.item;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -14,12 +18,19 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import ru.samogon.block.PlacedDrinkBlockEntity;
 import ru.samogon.effect.Intoxication;
 import ru.samogon.process.BeerStyle;
 import ru.samogon.process.BlendCatalog;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.process.SpiritType;
+import ru.samogon.registry.ModBlocks;
+import ru.samogon.registry.ModItems;
 
 import java.util.List;
 import java.util.Locale;
@@ -79,6 +90,11 @@ public final class BatchItem extends Item {
     public double defaultVolume() { return defaultVolume; }
     public Tincture tincture() { return tincture; }
     public boolean technical() { return technical; }
+
+    /** Finished drinks can be set down in the world; technical fractions cannot. */
+    public boolean placeable() {
+        return drinkable && !technical;
+    }
 
     /** Sets the empty vessel returned when the drink is finished. */
     public BatchItem withContainer(Supplier<Item> container) {
@@ -205,6 +221,63 @@ public final class BatchItem extends Item {
             lines.add(Component.translatable("tooltip.samogon.blend.effects",
                     Intoxication.auraSummary(auras)).withStyle(ChatFormatting.GREEN));
         }
+        if (placeable()) {
+            lines.add(Component.translatable("tooltip.samogon.place")
+                    .withStyle(ChatFormatting.DARK_GRAY));
+        }
+    }
+
+    /**
+     * Sneak-right-click on a top face sets the drink down as a block. A regular
+     * right-click still drinks, so the gesture cannot be triggered by accident.
+     * The rotation turns the mug handle or the bottle label toward the player.
+     */
+    @Override
+    public InteractionResult useOn(UseOnContext context) {
+        Player player = context.getPlayer();
+        if (player == null || !placeable() || !player.isSecondaryUseActive()) {
+            return InteractionResult.PASS;
+        }
+        Level level = context.getLevel();
+        BlockPlaceContext place = new BlockPlaceContext(context);
+        BlockPos pos = place.getClickedPos();
+        BlockPos support = pos.below();
+        boolean canPlace = (context.getClickedFace() == Direction.UP || place.replacingClickedOnBlock())
+                && level.getBlockState(support).isFaceSturdy(level, support, Direction.UP)
+                && place.canPlace()
+                && player.mayUseItemAt(pos, Direction.UP, context.getItemInHand());
+        if (!canPlace) {
+            // Sneaking is the "set it down" gesture. Consume the click so a
+            // missed placement cannot fall through to drinking the bottle.
+            return InteractionResult.CONSUME;
+        }
+        if (!level.isClientSide) {
+            ItemStack stack = context.getItemInHand();
+            int rotation = placementRotation(player, pos);
+            level.setBlock(pos, ModBlocks.PLACED_DRINK.get().defaultBlockState(), Block.UPDATE_ALL);
+            if (level.getBlockEntity(pos) instanceof PlacedDrinkBlockEntity placed) {
+                placed.setDrink(stack, rotation);
+            }
+            if (!player.getAbilities().instabuild) {
+                stack.shrink(1);
+            }
+            SoundType sound = container() == ModItems.WOODEN_MUG.get() ? SoundType.WOOD : SoundType.GLASS;
+            level.playSound(null, pos, sound.getPlaceSound(), SoundSource.BLOCKS, 0.8f, 0.95f);
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /**
+     * 16-step rotation that turns the model's front toward the player: the mug
+     * handle points along +X, while the bottle label faces north (-Z).
+     */
+    private int placementRotation(Player player, BlockPos pos) {
+        double dx = player.getX() - (pos.getX() + 0.5);
+        double dz = player.getZ() - (pos.getZ() + 0.5);
+        double alpha = Math.toDegrees(Math.atan2(dz, dx));
+        double degrees = container() == ModItems.WOODEN_MUG.get() ? -alpha : -90.0 - alpha;
+        double step = 360.0 / PlacedDrinkBlockEntity.ROTATION_STEPS;
+        return Math.floorMod((int) Math.round(degrees / step), PlacedDrinkBlockEntity.ROTATION_STEPS);
     }
 
     @Override
