@@ -9,19 +9,29 @@ import ru.samogon.item.BatchItem;
 import ru.samogon.item.BrineItem;
 import ru.samogon.item.GuideItem;
 import ru.samogon.item.HydrometerItem;
+import ru.samogon.process.Brewing;
 
 public final class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(SamogonMod.MOD_ID);
     public static final DeferredItem<Item> YEAST = simple("yeast");
     public static final DeferredItem<Item> MALT = simple("malt");
+    /** Dark-roasted malt: the grain charge of the dark beer style. */
+    public static final DeferredItem<Item> ROASTED_MALT = simple("roasted_malt");
+    /** Empty wooden mug: the only vessel beer is served in. */
+    public static final DeferredItem<Item> WOODEN_MUG = simple("wooden_mug");
     public static final DeferredItem<Item> ACTIVATED_CHARCOAL = simple("activated_charcoal");
     public static final DeferredItem<Item> BOTANICAL_BUNDLE = simple("botanical_bundle");
     public static final DeferredItem<Item> OAK_CHIPS = simple("oak_chips");
     public static final DeferredItem<Item> MOLECULAR_SIEVE = simple("molecular_sieve");
+    /** Hops: the bittering and aromatic charge of the brewery boil. */
+    public static final DeferredItem<Item> HOPS = simple("hops");
     public static final DeferredItem<Item> THERMOMETER = tool("thermometer");
     public static final DeferredItem<HydrometerItem> HYDROMETER = ITEMS.registerItem("hydrometer",
             HydrometerItem::new, new Item.Properties().stacksTo(1));
     public static final DeferredItem<GuideItem> GUIDE = ITEMS.registerItem("distillers_guide", GuideItem::new,
+            new Item.Properties().stacksTo(1));
+    /** The brewer's handbook: the same illustrated book, but for the brewery. */
+    public static final DeferredItem<GuideItem> BREWERS_GUIDE = ITEMS.registerItem("brewers_guide", GuideItem::new,
             new Item.Properties().stacksTo(1));
     public static final DeferredItem<BatchItem> SWEET_WORT = batch("sweet_wort", 0, false, 1000);
     public static final DeferredItem<BatchItem> FERMENTED_MASH = batch("fermented_mash", 12, true, 1000);
@@ -53,6 +63,17 @@ public final class ModItems {
     public static final DeferredItem<BatchItem> SAMOGON =
             batch("artisan_samogon", 40, true, 100);
 
+    // Brewery intermediates and the finished beer. Their stage is encoded in
+    // the batch origin (Brewing.WORT_ORIGIN / HOPPED_ORIGIN / BEER_ORIGIN).
+    public static final DeferredItem<BatchItem> BEER_WORT =
+            batch("beer_wort", 0, false, Brewing.WORT_VOLUME);
+    public static final DeferredItem<BatchItem> HOPPED_WORT =
+            batch("hopped_wort", 0, false, Brewing.WORT_VOLUME);
+    /** Finished beer, served in a wooden mug; drinking returns the empty mug. */
+    public static final DeferredItem<BatchItem> BEER =
+            ITEMS.registerItem("beer", props -> new BatchItem(props, Brewing.BEER_ABV, true, 500)
+                    .withContainer(WOODEN_MUG::get), new Item.Properties().stacksTo(1));
+
     private static DeferredItem<Item> simple(String id) {
         return ITEMS.registerSimpleItem(id, new Item.Properties().stacksTo(16));
     }
@@ -79,8 +100,11 @@ public final class ModItems {
 
     public static void addToTab(CreativeModeTab.Output output) {
         output.accept(GUIDE.get());
+        output.accept(BREWERS_GUIDE.get());
         ModBlocks.BLOCK_ITEMS.getEntries().forEach(item -> output.accept(item.get()));
-        ITEMS.getEntries().stream().filter(item -> item != GUIDE).forEach(item -> output.accept(item.get()));
+        ITEMS.getEntries().stream()
+                .filter(item -> item != GUIDE && item != BREWERS_GUIDE)
+                .forEach(item -> output.accept(item.get()));
     }
 
     private ModItems() {}

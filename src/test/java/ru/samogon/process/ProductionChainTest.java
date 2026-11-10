@@ -20,9 +20,10 @@ public final class ProductionChainTest {
     public static void main(String[] args) {
         grainChain();
         honeyChain();
+        breweryChain();
         wholeRun();
         drainEdgeCases();
-        System.out.println("Two production chains and drain edge cases passed.");
+        System.out.println("Two production chains, the brewery chain and drain edge cases passed.");
     }
 
     /** Six column passes are the documented way to reach neutral spirit. */
@@ -92,6 +93,86 @@ public final class ProductionChainTest {
         require(aged.volume() < infused.volume(), "cask angel's share must reduce volume");
 
         print("honey", wash, still, aged);
+    }
+
+    /**
+     * The brewery is a self-contained chain: mash to wort, boil with hops,
+     * ferment to beer. It must classify as beer and stay out of the distilling
+     * taxonomy, and no other machine may treat a brew as its feed.
+     */
+    private static void breweryChain() {
+        Batch wort = Brewing.wort();
+        require(Brewing.isBrew(wort), "brewery wort must be a brew");
+        require(Brewing.stageOf(wort) == Brewing.STAGE_WORT, "brewery wort stage");
+        require(SpiritType.of(wort) == SpiritType.WASH, "unfermented wort is not a drink");
+
+        Batch hopped = Brewing.boil(wort);
+        require(Brewing.stageOf(hopped) == Brewing.STAGE_HOPPED, "brewery hopped stage");
+        require(hopped.quality() > wort.quality(), "the hop boil must improve the wort");
+        require(SpiritType.of(hopped) == SpiritType.WASH, "hopped wort is not a drink yet");
+
+        Batch beer = Brewing.ferment(hopped, 0.5, 20.0);
+        require(Brewing.stageOf(beer) == Brewing.STAGE_BEER, "brewery beer stage");
+        require(SpiritType.of(beer) == SpiritType.BEER, "fermented beer must classify as beer");
+        require(beer.abv() > 4.0 && beer.abv() < 6.0, "beer must be about 5% ABV");
+        require(beer.volume() < hopped.volume(), "fermentation must lose some volume");
+        require(BeerStyle.of(beer.origin()) == BeerStyle.LIGHT, "plain malt mash must give the light style");
+
+        // The grain and the optional fermentation additive are encoded in the
+        // origin, so every style can be recovered from the finished batch.
+        Batch wheat = Brewing.ferment(Brewing.boil(Brewing.wort(BeerStyle.Grain.WHEAT.id())), 0.5, 20.0);
+        require(BeerStyle.of(wheat.origin()) == BeerStyle.WHEAT, "wheat grain must give the wheat style");
+        require("wheat".equals(Brewing.grainOf(wheat.origin())), "the grain must survive into the beer origin");
+
+        Batch honey = Brewing.ferment(Brewing.boil(Brewing.wort()), 0.5, 20.0,
+                BeerStyle.Additive.HONEY.id());
+        require(BeerStyle.of(honey.origin()) == BeerStyle.HONEY, "honey must give the honey style");
+        require(SpiritType.of(honey) == SpiritType.BEER, "flavoured beer must still classify as beer");
+
+        Batch dark = Brewing.ferment(Brewing.boil(Brewing.wort(BeerStyle.Grain.ROASTED.id())), 0.5, 20.0);
+        require(BeerStyle.of(dark.origin()) == BeerStyle.DARK, "roasted malt must give the dark style");
+
+        Batch ipa = Brewing.ferment(Brewing.boil(Brewing.wort()), 0.5, 20.0,
+                BeerStyle.Additive.HOP.id());
+        require(BeerStyle.of(ipa.origin()) == BeerStyle.IPA, "hops must give the IPA style");
+
+        Batch porter = Brewing.ferment(Brewing.boil(Brewing.wort(BeerStyle.Grain.ROASTED.id())), 0.5, 20.0,
+                BeerStyle.Additive.COCOA.id());
+        require(BeerStyle.of(porter.origin()) == BeerStyle.PORTER,
+                "cocoa and roasted malt must give the porter");
+
+        // Cold fermentation turns the same grain and additive pairs into lagers.
+        Batch pilsner = Brewing.ferment(Brewing.boil(Brewing.wort()), 0.5, 12.0);
+        require(BeerStyle.of(pilsner.origin()) == BeerStyle.PILSNER,
+                "cold barley wort must give the pilsner");
+        Batch schwarz = Brewing.ferment(Brewing.boil(Brewing.wort(BeerStyle.Grain.ROASTED.id())), 0.5, 12.0);
+        require(BeerStyle.of(schwarz.origin()) == BeerStyle.SCHWARZBIER,
+                "cold roasted wort must give the schwarzbier");
+        Batch bock = Brewing.ferment(Brewing.boil(Brewing.wort()), 0.5, 12.0,
+                BeerStyle.Additive.HONEY.id());
+        require(BeerStyle.of(bock.origin()) == BeerStyle.BOCK, "cold honey wort must give the bock");
+
+        // A flavouring without a cold version keeps its taste as a warm ale.
+        Batch appleCold = Brewing.ferment(Brewing.boil(Brewing.wort()), 0.5, 12.0,
+                BeerStyle.Additive.APPLE.id());
+        require(BeerStyle.of(appleCold.origin()) == BeerStyle.APPLE,
+                "apple must fall back to the apple ale even when fermented cold");
+
+        // Old three-part origins without a family parse as the warm ale family.
+        require(BeerStyle.of("beer:wheat:berry") == BeerStyle.BERRY,
+                "an old three-part origin must stay a berry ale");
+
+        // Batches written by older versions carry the plain "beer" origin.
+        require(BeerStyle.of("beer") == BeerStyle.LIGHT, "plain beer origin must fall back to the light style");
+
+        Batch wash = Simulation.mash("grain", 4);
+        require(!Brewing.isBrew(wash), "ordinary mash must not be a brew");
+        require(SpiritType.of(wash) != SpiritType.BEER, "ordinary mash must not be beer");
+        System.out.printf(Locale.ROOT,
+                "brewery chain: wort %.0f ml | hopped %.0f ml | beer %.0f ml @ %.1f%% | quality %d"
+                        + " | styles %s %s %s%n",
+                wort.volume(), hopped.volume(), beer.volume(), beer.abv(), beer.quality(),
+                BeerStyle.of(beer.origin()), BeerStyle.of(wheat.origin()), BeerStyle.of(honey.origin()));
     }
 
     private static StillResult potStill(Batch wash) {

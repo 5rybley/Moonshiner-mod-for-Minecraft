@@ -314,7 +314,7 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
             case MASHING -> graphics.drawString(font,
                     Component.translatable("gui.samogon.hint.heat_below"),
                     x + METRIC_LEFT, extraY, COPPER_DARK, false);
-            case FERMENTATION -> graphics.drawString(font,
+            case FERMENTATION, BEER_FERMENTATION -> graphics.drawString(font,
                     Component.translatable("gui.samogon.hint.ferment_temp"),
                     x + METRIC_LEFT, extraY, COPPER_DARK, false);
             default -> metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, extraY,
@@ -533,6 +533,7 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
             case DILUTION -> 0xFF4F7694;
             case AGING -> 0xFFA47A2D;
             case TASTING -> 0xFF7A4E8C;
+            case BEER_FERMENTATION -> 0xFF7E7A34;
         };
     }
 
@@ -547,6 +548,7 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
             case DILUTION -> ModBlocks.DILUTION_BASIN.get();
             case AGING -> ModBlocks.AGING_CASK.get();
             case TASTING -> ModBlocks.TASTING_TABLE.get();
+            case BEER_FERMENTATION -> ModBlocks.BEER_FERMENTATION_BARREL.get();
         });
     }
 

@@ -6,6 +6,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.CustomModelData;
+import ru.samogon.process.BeerStyle;
+import ru.samogon.process.Brewing;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.process.SpiritType;
 import ru.samogon.registry.ModItems;
@@ -34,6 +36,19 @@ public final class BatchData {
                         data.getInt("samogon_oak"), cut, data.getInt("samogon_column_runs"));
             }
         } catch (IllegalArgumentException ignored) { /* Invalid external item data falls back to safe defaults. */ }
+        // The brewery items carry their stage in the origin so a bottle without
+        // NBT (creative, /give, an old save) still classifies correctly.
+        boolean beer = stack.is(ModItems.BEER.get());
+        boolean hopped = stack.is(ModItems.HOPPED_WORT.get());
+        boolean beerWort = stack.is(ModItems.BEER_WORT.get());
+        if (beer || hopped || beerWort) {
+            String origin = beer ? Brewing.BEER_ORIGIN
+                    : hopped ? Brewing.HOPPED_ORIGIN : Brewing.WORT_ORIGIN;
+            int quality = beer ? 72 : hopped ? 68 : 62;
+            int impurities = beer ? 8 : 0;
+            return new Batch(item.defaultVolume(), item.defaultAbv(), quality, impurities,
+                    0, false, origin, 0);
+        }
         boolean wort = stack.is(ModItems.SWEET_WORT.get());
         boolean mash = stack.is(ModItems.FERMENTED_MASH.get());
         int quality = wort ? 55 : mash ? 65 : 72;
@@ -69,6 +84,13 @@ public final class BatchData {
                 case LIQUEUR -> 1;
                 default -> 0;
             };
+            if (variant > 0) {
+                stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(variant));
+            }
+        } else if (item == ModItems.BEER.get()) {
+            // Each beer style has its own coloured fill, so the mug shows the
+            // drink's colour everywhere it is drawn (inventory, brewery, guide).
+            int variant = BeerStyle.of(batch.origin()).variant();
             if (variant > 0) {
                 stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(variant));
             }

@@ -1,0 +1,20 @@
+{
+  "multipart": [
+    {"when": {"facing": "west", "part": "0"}, "apply": {"model": "samogon:block/brewery_west_0"}},
+    {"when": {"facing": "west", "part": "1"}, "apply": {"model": "samogon:block/brewery_west_1"}},
+    {"when": {"facing": "west", "part": "2"}, "apply": {"model": "samogon:block/brewery_west_2"}},
+    {"when": {"facing": "west", "part": "3"}, "apply": {"model": "samogon:block/brewery_west_3"}},
+    {"when": {"facing": "north", "part": "0"}, "apply": {"model": "samogon:block/brewery_north_0"}},
+    {"when": {"facing": "north", "part": "1"}, "apply": {"model": "samogon:block/brewery_north_1"}},
+    {"when": {"facing": "north", "part": "2"}, "apply": {"model": "samogon:block/brewery_north_2"}},
+    {"when": {"facing": "north", "part": "3"}, "apply": {"model": "samogon:block/brewery_north_3"}},
+    {"when": {"facing": "east", "part": "0"}, "apply": {"model": "samogon:block/brewery_east_0"}},
+    {"when": {"facing": "east", "part": "1"}, "apply": {"model": "samogon:block/brewery_east_1"}},
+    {"when": {"facing": "east", "part": "2"}, "apply": {"model": "samogon:block/brewery_east_2"}},
+    {"when": {"facing": "east", "part": "3"}, "apply": {"model": "samogon:block/brewery_east_3"}},
+    {"when": {"facing": "south", "part": "0"}, "apply": {"model": "samogon:block/brewery_south_0"}},
+    {"when": {"facing": "south", "part": "1"}, "apply": {"model": "samogon:block/brewery_south_1"}},
+    {"when": {"facing": "south", "part": "2"}, "apply": {"model": "samogon:block/brewery_south_2"}},
+    {"when": {"facing": "south", "part": "3"}, "apply": {"model": "samogon:block/brewery_south_3"}}
+  ]
+}

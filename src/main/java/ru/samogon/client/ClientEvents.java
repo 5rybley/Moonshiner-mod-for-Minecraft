@@ -16,23 +16,32 @@ public final class ClientEvents {
 
     @SubscribeEvent
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        openGuide(event.getItemStack());
-        if (event.getItemStack().is(ModItems.GUIDE.get())) {
+        if (openGuide(event.getItemStack())) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        openGuide(event.getItemStack());
-        if (event.getItemStack().is(ModItems.GUIDE.get())) {
+        if (openGuide(event.getItemStack())) {
             event.setCanceled(true);
         }
     }
 
-    private static void openGuide(ItemStack stack) {
-        if (stack.is(ModItems.GUIDE.get()) && !(Minecraft.getInstance().screen instanceof GuideScreen)) {
-            Minecraft.getInstance().setScreen(new GuideScreen());
+    /** Opens the matching handbook; returns true when the stack was a guide. */
+    private static boolean openGuide(ItemStack stack) {
+        if (stack.is(ModItems.GUIDE.get())) {
+            if (!(Minecraft.getInstance().screen instanceof GuideScreen)) {
+                Minecraft.getInstance().setScreen(new GuideScreen());
+            }
+            return true;
         }
+        if (stack.is(ModItems.BREWERS_GUIDE.get())) {
+            if (!(Minecraft.getInstance().screen instanceof BrewersGuideScreen)) {
+                Minecraft.getInstance().setScreen(new BrewersGuideScreen());
+            }
+            return true;
+        }
+        return false;
     }
 }

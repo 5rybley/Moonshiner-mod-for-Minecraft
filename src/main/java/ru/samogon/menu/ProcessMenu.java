@@ -17,6 +17,7 @@ import ru.samogon.block.ProcessBlockEntity;
 import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
 import ru.samogon.process.BlendCatalog;
+import ru.samogon.process.Brewing;
 import ru.samogon.process.MachineData;
 import ru.samogon.process.Simulation;
 import ru.samogon.process.Simulation.Batch;
@@ -110,7 +111,7 @@ public final class ProcessMenu extends AbstractContainerMenu {
         addSlot(new Slot(container, SLOT_OUTPUT, outputX(kind), OUTPUT_Y) {
             @Override
             public boolean mayPlace(ItemStack stack) {
-                return kind != ProcessBlock.Kind.TASTING && isOutputContainer(stack);
+                return kind != ProcessBlock.Kind.TASTING && isOutputContainer(kind, stack);
             }
 
             @Override
@@ -186,14 +187,22 @@ public final class ProcessMenu extends AbstractContainerMenu {
                     || stack.is(Items.POTATO)
                     || stack.is(Items.BEETROOT)
                     || stack.is(Items.SUGAR_CANE)
-                    || stack.is(Items.APPLE);
+                    || stack.is(Items.APPLE)
+                    || stack.is(Items.COCOA_BEANS)
+                    || stack.is(Items.MELON_SLICE)
+                    || stack.is(Items.CARROT)
+                    || stack.is(Items.CACTUS);
         }
+        // The beer barrel charges hopped wort and, once it is loaded, an
+        // optional flavouring charge that is folded into the fermentation.
+        if (kind == ProcessBlock.Kind.BEER_FERMENTATION && isFlavoring(stack)) return true;
         if (!(stack.getItem() instanceof BatchItem)) return false;
         try {
             Batch batch = BatchData.read(stack);
             if (batch == null) return false;
             return switch (kind) {
-                case FERMENTATION -> batch.abv() <= 0.5;
+                case FERMENTATION -> batch.abv() <= 0.5 && !Brewing.isBrew(batch);
+                case BEER_FERMENTATION -> Brewing.stageOf(batch) == Brewing.STAGE_HOPPED;
                 case DISTILLER -> batch.abv() >= 1 && batch.volume() >= 100;
                 case RECTIFIER -> batch.abv() >= 1 && batch.volume() >= 10;
                 case FILTER -> batch.abv() >= 1;
@@ -208,10 +217,19 @@ public final class ProcessMenu extends AbstractContainerMenu {
         }
     }
 
+    /** Flavouring charges the beer barrel accepts alongside the hopped wort. */
+    private static boolean isFlavoring(ItemStack stack) {
+        return stack.is(Items.HONEY_BOTTLE)
+                || stack.is(Items.SWEET_BERRIES)
+                || stack.is(Items.APPLE)
+                || stack.is(ModItems.HOPS.get())
+                || stack.is(Items.COCOA_BEANS);
+    }
+
     public static boolean acceptsAdditive(ProcessBlock.Kind kind, ItemStack stack) {
         return switch (kind) {
             case MASHING -> false;
-            case FERMENTATION -> stack.is(ModItems.YEAST.get());
+            case FERMENTATION, BEER_FERMENTATION -> stack.is(ModItems.YEAST.get());
             case DISTILLER -> stack.is(Items.WATER_BUCKET);
             case RECTIFIER -> stack.is(ModItems.MOLECULAR_SIEVE.get());
             case FILTER -> stack.is(ModItems.ACTIVATED_CHARCOAL.get());
@@ -222,7 +240,19 @@ public final class ProcessMenu extends AbstractContainerMenu {
         };
     }
 
-    public static boolean isOutputContainer(ItemStack stack) {
+    /**
+     * The empty vessel the output slot may hold. Beer is only ever served in a
+     * wooden mug and spirits only in a glass bottle, so the slot follows the
+     * machine: the beer barrel takes mugs, the blending table takes both (a
+     * blended brew leaves in a mug) and every other machine takes bottles.
+     */
+    public static boolean isOutputContainer(ProcessBlock.Kind kind, ItemStack stack) {
+        if (kind == ProcessBlock.Kind.BEER_FERMENTATION) {
+            return stack.is(ModItems.WOODEN_MUG.get());
+        }
+        if (stack.is(ModItems.WOODEN_MUG.get())) {
+            return kind == ProcessBlock.Kind.BLENDING;
+        }
         return stack.is(Items.GLASS_BOTTLE) || stack.is(Items.BUCKET);
     }
 
@@ -255,7 +285,7 @@ public final class ProcessMenu extends AbstractContainerMenu {
             } else if (acceptsAdditive(kind, stack)) {
                 targetStart = SLOT_ADDITIVE;
                 targetEnd = kind == ProcessBlock.Kind.BLENDING ? SLOT_ADDITIVE_LAST + 1 : SLOT_ADDITIVE + 1;
-            } else if (isOutputContainer(stack)) {
+            } else if (isOutputContainer(kind, stack)) {
                 if (kind == ProcessBlock.Kind.TASTING) return ItemStack.EMPTY;
                 targetStart = SLOT_OUTPUT;
                 targetEnd = SLOT_OUTPUT + 1;

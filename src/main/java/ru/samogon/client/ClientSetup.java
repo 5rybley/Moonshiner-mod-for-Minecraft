@@ -30,6 +30,7 @@ public final class ClientSetup {
     public static void registerMenuScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenus.PROCESS.get(), ProcessScreen::new);
         event.register(ModMenus.AGING_BARREL.get(), AgingBarrelScreen::new);
+        event.register(ModMenus.BREWERY.get(), BreweryScreen::new);
     }
 
     @SubscribeEvent

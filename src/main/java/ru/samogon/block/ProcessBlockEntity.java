@@ -32,7 +32,9 @@ import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
 import ru.samogon.menu.ProcessMenu;
 import ru.samogon.process.BatchNbt;
+import ru.samogon.process.BeerStyle;
 import ru.samogon.process.BlendCatalog;
+import ru.samogon.process.Brewing;
 import ru.samogon.process.Environment;
 import ru.samogon.process.MachineData;
 import ru.samogon.process.Quality;
@@ -72,6 +74,10 @@ public final class ProcessBlockEntity extends BlockEntity {
     public static final int MAX_COOLANT = 18000;
     private static final int BOTTLE = StillRun.BOTTLE_VOLUME;
     private static final int JAR = 1000;
+    /** One wooden mug of beer, matching the beer item's own volume. */
+    private static final int MUG = 500;
+    /** Hop boil to bottling time for the standalone beer barrel. */
+    private static final int BEER_FERMENT_TICKS = 4000;
 
     public static final int SLOT_INPUT = 0;
     public static final int SLOT_ADDITIVE = 1;
@@ -181,6 +187,8 @@ public final class ProcessBlockEntity extends BlockEntity {
     private StillRun still;
     private String agingKind = "";
     private String blendComposition = "";
+    /** Flavouring pulled from the input slot for a beer fermentation. */
+    private String fermentAdditive = Brewing.NO_ADDITIVE;
     private Fraction receiver = Fraction.HEARTS;
     /** Pot-still mode chosen before charging: separate fractions or run whole. */
     private boolean fractional = true;
@@ -284,6 +292,7 @@ public final class ProcessBlockEntity extends BlockEntity {
         sieve = false;
         agingKind = "";
         blendComposition = "";
+        fermentAdditive = Brewing.NO_ADDITIVE;
     }
 
     /** Bottle item that best matches the batch currently inside this machine. */
@@ -295,9 +304,10 @@ public final class ProcessBlockEntity extends BlockEntity {
             case RECTIFIER -> batch != null && batch.abv() >= 99
                     ? ModItems.ANHYDROUS_SPIRIT.get() : ModItems.NEUTRAL_SPIRIT.get();
             case FILTER -> ModItems.FILTERED_SPIRIT.get();
-            case BLENDING -> ModItems.SAMOGON.get();
+            case BLENDING -> isBeerBatch() ? ModItems.BEER.get() : ModItems.SAMOGON.get();
             case DILUTION -> ModItems.DILUTED_SPIRIT.get();
             case AGING -> ModItems.OAK_AGED_SPIRIT.get();
+            case BEER_FERMENTATION -> ModItems.BEER.get();
             // The tasting table never bottles anything: the sample stays on it.
             case TASTING -> null;
         };
@@ -508,7 +518,7 @@ public final class ProcessBlockEntity extends BlockEntity {
         processAutomation();
         switch (kind()) {
             case MASHING -> tickMashing();
-            case FERMENTATION -> tickFermentation();
+            case FERMENTATION, BEER_FERMENTATION -> tickFermentation();
             case DISTILLER -> tickDistiller();
             case RECTIFIER -> tickRectifier();
             case FILTER -> tickFilter();
@@ -640,7 +650,9 @@ public final class ProcessBlockEntity extends BlockEntity {
             }
             case FERMENTATION -> {
                 Batch wort = readBatch(stack);
-                if (wort == null || wort.abv() > 0.5) return false;
+                // Brewing belongs to the brewery multiblock; the barrel must
+                // never swallow a brewer's wort or a hopped wort.
+                if (wort == null || wort.abv() > 0.5 || Brewing.isBrew(wort)) return false;
                 batch = wort;
                 stage = 1;
                 progress = 0;
@@ -648,6 +660,20 @@ public final class ProcessBlockEntity extends BlockEntity {
                 settle = 0;
                 sieve = false;
                 agingKind = "";
+                active = false;
+                return true;
+            }
+            case BEER_FERMENTATION -> {
+                // Only hop-boiled brewer's wort is charged here; the barrel is
+                // the last brewery step, so sweet wort and finished beer bounce.
+                Batch hopped = readBatch(stack);
+                if (hopped == null || Brewing.stageOf(hopped) != Brewing.STAGE_HOPPED) return false;
+                batch = hopped;
+                stage = 1;
+                progress = 0;
+                duration = 0;
+                settle = 0;
+                fermentAdditive = Brewing.NO_ADDITIVE;
                 active = false;
                 return true;
             }
@@ -745,6 +771,26 @@ public final class ProcessBlockEntity extends BlockEntity {
                 ambientSum = 0;
                 ambientSamples = 0;
             }
+            case BEER_FERMENTATION -> {
+                // Yeast is required; the optional flavouring sits in the input
+                // slot, exactly like the brewery's fermentation step.
+                if (batch == null || !additive.is(ModItems.YEAST.get())) return;
+                ItemStack flavour = inventory.getItem(SLOT_INPUT);
+                String flavouring = flavorOf(flavour);
+                if (!Brewing.NO_ADDITIVE.equals(flavouring)) {
+                    consumeSlot(SLOT_INPUT);
+                    if (flavour.is(Items.HONEY_BOTTLE)) container = Items.GLASS_BOTTLE;
+                }
+                consumeSlot(SLOT_ADDITIVE);
+                fermentAdditive = flavouring;
+                stage = 2;
+                progress = 0;
+                duration = BEER_FERMENT_TICKS;
+                deviationSum = 0;
+                deviationSamples = 0;
+                ambientSum = 0;
+                ambientSamples = 0;
+            }
             case RECTIFIER -> {
                 // One sieve is enough. Without the sieve guard a stack left in
                 // the additive slot was eaten one item per tick while the
@@ -794,10 +840,10 @@ public final class ProcessBlockEntity extends BlockEntity {
     }
 
     private static Item inputContainer(ItemStack stack) {
-        // Both a honey bottle and any filled batch bottle leave an empty glass
-        // bottle behind when their contents are poured into a machine.
-        return stack.is(Items.HONEY_BOTTLE) || stack.getItem() instanceof ru.samogon.item.BatchItem
-                ? Items.GLASS_BOTTLE : null;
+        // A filled vessel leaves behind its own empty: a glass bottle for a
+        // spirit or a honey bottle, a wooden mug for a mug of beer.
+        if (stack.getItem() instanceof ru.samogon.item.BatchItem batch) return batch.container();
+        return stack.is(Items.HONEY_BOTTLE) ? Items.GLASS_BOTTLE : null;
     }
 
     private static Batch readBatch(ItemStack stack) {
@@ -824,10 +870,11 @@ public final class ProcessBlockEntity extends BlockEntity {
     private void returnContainer(Item container) {
         if (container == null) return;
         ItemStack returned = new ItemStack(container);
-        // The output slot doubles as the machine's empty-bottle feeder, so a
-        // glass bottle belongs there. An empty bucket would just block
-        // bottling, so it is dropped at the machine instead.
-        if (container == Items.GLASS_BOTTLE && inventory.getItem(SLOT_OUTPUT).isEmpty()) {
+        // The output slot doubles as the machine's empty-vessel feeder, so a
+        // container only belongs there when it is the vessel this machine fills.
+        // Everything else (a bucket, or the glass bottle a beer barrel would
+        // never fill) is dropped at the machine instead.
+        if (container == outputContainer() && inventory.getItem(SLOT_OUTPUT).isEmpty()) {
             inventory.setItem(SLOT_OUTPUT, returned);
         } else if (level != null) {
             Block.popResource(level, worldPosition, returned);
@@ -835,8 +882,12 @@ public final class ProcessBlockEntity extends BlockEntity {
     }
 
     private void bottleResult() {
+        // Beer is only ever served in a wooden mug, spirits only in a glass
+        // bottle: the empties the output slot may hold depend on the batch.
+        Item container = outputContainer();
+        if (container == null) return;
         ItemStack output = inventory.getItem(SLOT_OUTPUT);
-        if (!output.is(Items.GLASS_BOTTLE) || output.getCount() != 1) return;
+        if (!output.is(container) || output.getCount() != 1) return;
 
         if (kind() == ProcessBlock.Kind.DISTILLER) {
             if (still == null || !still.finished()) return;
@@ -854,15 +905,40 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (!canBottleBatch()) return;
         Item item = outputItem();
         if (item == null) return;
-        Batch portion = takePortion(kind() == ProcessBlock.Kind.MASHING
-                || kind() == ProcessBlock.Kind.FERMENTATION ? JAR : BOTTLE);
+        Batch portion = takePortion(outputVolume());
         inventory.setItem(SLOT_OUTPUT, BatchData.create(item, portion));
         playBottleSound();
     }
 
+    /** The empty vessel the output slot must hold for the current batch. */
+    private Item outputContainer() {
+        return switch (kind()) {
+            case TASTING -> null;
+            case BEER_FERMENTATION -> ModItems.WOODEN_MUG.get();
+            case BLENDING -> isBeerBatch() ? ModItems.WOODEN_MUG.get() : Items.GLASS_BOTTLE;
+            default -> Items.GLASS_BOTTLE;
+        };
+    }
+
+    /** Volume drawn from the batch by one bottle or mug of the current kind. */
+    private double outputVolume() {
+        return switch (kind()) {
+            case MASHING, FERMENTATION -> JAR;
+            case BEER_FERMENTATION -> MUG;
+            case BLENDING -> isBeerBatch() ? MUG : BOTTLE;
+            default -> BOTTLE;
+        };
+    }
+
+    /** True when the loaded batch is a finished beer rather than a spirit. */
+    private boolean isBeerBatch() {
+        return Brewing.isFinishedBeer(batch);
+    }
+
     private boolean canBottleBatch() {
         return batch != null && (stage == 4
-                || (kind() == ProcessBlock.Kind.FERMENTATION && stage == 3));
+                || ((kind() == ProcessBlock.Kind.FERMENTATION
+                        || kind() == ProcessBlock.Kind.BEER_FERMENTATION) && stage == 3));
     }
 
     private Item outputItem() {
@@ -875,6 +951,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             case BLENDING -> blendOutput();
             case DILUTION -> ModItems.DILUTED_SPIRIT.get();
             case AGING -> ModItems.OAK_AGED_SPIRIT.get();
+            case BEER_FERMENTATION -> ModItems.BEER.get();
             case DISTILLER, TASTING -> null;
         };
     }
@@ -885,6 +962,9 @@ public final class ProcessBlockEntity extends BlockEntity {
      * whose dynamic name, composition and aroma live in the batch data.
      */
     private Item blendOutput() {
+        // A blended brew stays beer and is served in a mug; only spirits are
+        // bottled in glass.
+        if (isBeerBatch()) return ModItems.BEER.get();
         if ("dilute".equals(agingKind)) return ModItems.DILUTED_SPIRIT.get();
         if (batch != null) {
             // Gin, absinthe and liqueur are one artisan bottle whose dynamic
@@ -976,7 +1056,11 @@ public final class ProcessBlockEntity extends BlockEntity {
         }
         double averageDeviation = deviationSamples == 0 ? 0 : deviationSum / deviationSamples;
         double averageTemperature = ambientSamples == 0 ? 20 : ambientSum / ambientSamples;
-        batch = Simulation.ferment(batch, averageDeviation, averageTemperature);
+        // The standalone beer barrel runs the brewery's own top fermentation,
+        // so the finished mug keeps its grain and flavouring in the origin.
+        batch = kind() == ProcessBlock.Kind.BEER_FERMENTATION
+                ? Brewing.ferment(batch, averageDeviation, averageTemperature, fermentAdditive)
+                : Simulation.ferment(batch, averageDeviation, averageTemperature);
         stage = 3;
         active = false;
         progress = duration;
@@ -1277,7 +1361,8 @@ public final class ProcessBlockEntity extends BlockEntity {
 
     private boolean isReady() {
         return stage == 4
-                || (kind() == ProcessBlock.Kind.FERMENTATION && stage == 3)
+                || ((kind() == ProcessBlock.Kind.FERMENTATION
+                        || kind() == ProcessBlock.Kind.BEER_FERMENTATION) && stage == 3)
                 || (kind() == ProcessBlock.Kind.DISTILLER && still != null && still.finished());
     }
 
@@ -1304,7 +1389,7 @@ public final class ProcessBlockEntity extends BlockEntity {
         switch (kind()) {
             case MASHING -> server.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE,
                     x, y + 0.85, z, 1, 0.35, 0.05, 0.35, 0.008);
-            case FERMENTATION -> {
+            case FERMENTATION, BEER_FERMENTATION -> {
                 server.sendParticles(ParticleTypes.BUBBLE_POP, x, y + 0.9, z,
                         1, 0.3, 0.05, 0.3, 0.005);
                 if (progress > duration / 2) {
@@ -1369,6 +1454,7 @@ public final class ProcessBlockEntity extends BlockEntity {
         InteractionResult result = switch (kind()) {
             case MASHING -> useMashing(player, hand, stack);
             case FERMENTATION -> useFermentation(player, hand, stack);
+            case BEER_FERMENTATION -> useBeerFermentation(player, hand, stack);
             case DISTILLER -> useDistiller(player, hand, stack);
             case RECTIFIER -> useRectifier(player, hand, stack);
             case FILTER -> useFilter(player, hand, stack);
@@ -1447,12 +1533,12 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (stage == 0) {
             if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
                 Batch wort = BatchData.read(stack);
-                if (wort.abv() > 0.5) {
+                if (wort.abv() > 0.5 || Brewing.isBrew(wort)) {
                     return InteractionResult.SUCCESS;
                 }
                 batch = wort;
                 stage = 1;
-                consume(player, stack, Items.GLASS_BOTTLE);
+                consume(player, stack, inputContainer(stack));
                 return InteractionResult.SUCCESS;
             }
             return InteractionResult.SUCCESS;
@@ -1477,6 +1563,80 @@ public final class ProcessBlockEntity extends BlockEntity {
         return bottleJar(player, stack, ModItems.FERMENTED_MASH.get());
     }
 
+    /**
+     * The one-block beer barrel. It takes hop-boiled brewer's wort and yeast
+     * and hands back finished beer in a wooden mug. A flavouring left in the
+     * input slot at the moment the yeast is added is folded into the brew,
+     * exactly like the brewery's fermentation step.
+     */
+    private InteractionResult useBeerFermentation(Player player, InteractionHand hand, ItemStack stack) {
+        if (stage == 0) {
+            if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
+                Batch hopped = BatchData.read(stack);
+                if (hopped == null || Brewing.stageOf(hopped) != Brewing.STAGE_HOPPED) {
+                    return InteractionResult.SUCCESS;
+                }
+                batch = hopped;
+                stage = 1;
+                progress = 0;
+                duration = 0;
+                settle = 0;
+                fermentAdditive = Brewing.NO_ADDITIVE;
+                consume(player, stack, inputContainer(stack));
+                return InteractionResult.SUCCESS;
+            }
+            return InteractionResult.SUCCESS;
+        }
+        if (stage == 1) {
+            if (stack.is(ModItems.YEAST.get())) {
+                String flavouring = flavorOf(inventory.getItem(SLOT_INPUT));
+                if (!Brewing.NO_ADDITIVE.equals(flavouring)) {
+                    if (inventory.getItem(SLOT_INPUT).is(Items.HONEY_BOTTLE)) {
+                        returnContainer(Items.GLASS_BOTTLE);
+                    }
+                    consumeSlot(SLOT_INPUT);
+                }
+                consume(player, stack, null);
+                fermentAdditive = flavouring;
+                stage = 2;
+                progress = 0;
+                duration = BEER_FERMENT_TICKS;
+                deviationSum = 0;
+                deviationSamples = 0;
+                ambientSum = 0;
+                ambientSamples = 0;
+                return InteractionResult.SUCCESS;
+            }
+            return InteractionResult.SUCCESS;
+        }
+        if (stage == 2) {
+            return InteractionResult.SUCCESS;
+        }
+        return bottleMug(player, stack);
+    }
+
+    /** Draws one wooden mug of finished beer, leaving the rest for later. */
+    private InteractionResult bottleMug(Player player, ItemStack stack) {
+        if (!stack.is(ModItems.WOODEN_MUG.get()) || batch == null) {
+            return InteractionResult.SUCCESS;
+        }
+        Batch portion = takePortion(MUG);
+        consume(player, stack, null);
+        giveOrDrop(player, BatchData.create(ModItems.BEER.get(), portion));
+        level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 0.7f, 0.95f);
+        return InteractionResult.SUCCESS;
+    }
+
+    /** Flavouring encoded by an input stack, or {@link Brewing#NO_ADDITIVE}. */
+    private static String flavorOf(ItemStack stack) {
+        if (stack.is(Items.HONEY_BOTTLE)) return BeerStyle.Additive.HONEY.id();
+        if (stack.is(Items.SWEET_BERRIES)) return BeerStyle.Additive.BERRY.id();
+        if (stack.is(Items.APPLE)) return BeerStyle.Additive.APPLE.id();
+        if (stack.is(ModItems.HOPS.get())) return BeerStyle.Additive.HOP.id();
+        if (stack.is(Items.COCOA_BEANS)) return BeerStyle.Additive.COCOA.id();
+        return Brewing.NO_ADDITIVE;
+    }
+
     private InteractionResult useDistiller(Player player, InteractionHand hand, ItemStack stack) {
         // Allow filling the condenser before loading a wash; the coolant is kept
         // when the pot is charged.
@@ -1496,7 +1656,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 if (wash.abv() < 1 || wash.volume() < 100) {
                     return InteractionResult.SUCCESS;
                 }
-                consume(player, stack, Items.GLASS_BOTTLE);
+                consume(player, stack, inputContainer(stack));
                 batch = null;
                 stage = 3;
                 progress = 0;
@@ -1551,7 +1711,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 if (feed.abv() < 1 || feed.volume() < 10) {
                     return InteractionResult.SUCCESS;
                 }
-                consume(player, stack, Items.GLASS_BOTTLE);
+                consume(player, stack, inputContainer(stack));
                 batch = feed;
                 stage = 1;
                 settle = 0;
@@ -1599,7 +1759,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 }
                 batch = feed;
                 stage = 1;
-                consume(player, stack, Items.GLASS_BOTTLE);
+                consume(player, stack, inputContainer(stack));
                 return InteractionResult.SUCCESS;
             }
             return InteractionResult.SUCCESS;
@@ -1634,7 +1794,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 batch = feed;
                 stage = 1;
                 blendComposition = "";
-                consume(player, stack, Items.GLASS_BOTTLE);
+                consume(player, stack, inputContainer(stack));
                 return InteractionResult.SUCCESS;
             }
             return InteractionResult.SUCCESS;
@@ -1659,7 +1819,31 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (stage == 3) {
             return InteractionResult.SUCCESS;
         }
-        return bottleSmall(player, stack, blendOutput());
+        return bottleBlend(player, stack);
+    }
+
+    /**
+     * Draws a finished blend by hand. A blended brew is served in a wooden mug
+     * and a blended spirit in a glass bottle, so the held vessel must match the
+     * drink: beer and samogon never swap containers.
+     */
+    private InteractionResult bottleBlend(Player player, ItemStack stack) {
+        if (batch == null) {
+            return InteractionResult.SUCCESS;
+        }
+        Item item = blendOutput();
+        if (item == null) {
+            return InteractionResult.SUCCESS;
+        }
+        boolean beer = isBeerBatch();
+        if (!stack.is(beer ? ModItems.WOODEN_MUG.get() : Items.GLASS_BOTTLE)) {
+            return InteractionResult.SUCCESS;
+        }
+        Batch portion = takePortion(beer ? MUG : BOTTLE);
+        consume(player, stack, null);
+        giveOrDrop(player, BatchData.create(item, portion));
+        level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 0.7f, 1.0f);
+        return InteractionResult.SUCCESS;
     }
 
     private InteractionResult useDilution(Player player, InteractionHand hand, ItemStack stack) {
@@ -1674,7 +1858,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 }
                 batch = feed;
                 stage = 1;
-                consume(player, stack, Items.GLASS_BOTTLE);
+                consume(player, stack, inputContainer(stack));
                 return InteractionResult.SUCCESS;
             }
             return InteractionResult.SUCCESS;
@@ -1708,7 +1892,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 }
                 batch = feed;
                 stage = 1;
-                consume(player, stack, Items.GLASS_BOTTLE);
+                consume(player, stack, inputContainer(stack));
                 return InteractionResult.SUCCESS;
             }
             return InteractionResult.SUCCESS;
@@ -1983,6 +2167,7 @@ public final class ProcessBlockEntity extends BlockEntity {
         tag.putBoolean("AnnouncedDone", announcedDone);
         tag.putString("AgingKind", agingKind);
         tag.putString("BlendComposition", blendComposition);
+        tag.putString("FermentAdditive", fermentAdditive);
         tag.putString("Receiver", receiver.id());
         tag.putBoolean("Fractional", fractional);
         tag.putInt("ColumnRunsTarget", columnRunsTarget);
@@ -2016,6 +2201,8 @@ public final class ProcessBlockEntity extends BlockEntity {
         announcedDone = tag.getBoolean("AnnouncedDone");
         agingKind = tag.getString("AgingKind");
         blendComposition = tag.getString("BlendComposition");
+        fermentAdditive = tag.contains("FermentAdditive")
+                ? tag.getString("FermentAdditive") : Brewing.NO_ADDITIVE;
         fractional = !tag.contains("Fractional") || tag.getBoolean("Fractional");
         columnRunsTarget = tag.contains("ColumnRunsTarget") ? tag.getInt("ColumnRunsTarget") : 1;
         columnRunsLeft = tag.getInt("ColumnRunsLeft");

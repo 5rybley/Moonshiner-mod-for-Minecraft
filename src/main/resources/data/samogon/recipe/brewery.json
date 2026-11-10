@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["ACA","CBC","DDD"],"key":{"A":{"item":"minecraft:copper_ingot"},"B":{"item":"minecraft:cauldron"},"C":{"item":"minecraft:iron_ingot"},"D":{"item":"minecraft:oak_planks"}},"result":{"id":"samogon:brewery","count":1}}

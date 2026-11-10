@@ -16,6 +16,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
 import ru.samogon.effect.Intoxication;
+import ru.samogon.process.BeerStyle;
 import ru.samogon.process.BlendCatalog;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.process.SpiritType;
@@ -23,6 +24,7 @@ import ru.samogon.process.SpiritType;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public final class BatchItem extends Item {
     public enum Tincture {
@@ -51,6 +53,8 @@ public final class BatchItem extends Item {
     private final double defaultVolume;
     private final Tincture tincture;
     private final boolean technical;
+    /** Empty vessel returned after the last sip; glass bottles unless overridden. */
+    private Supplier<Item> emptyContainer = () -> Items.GLASS_BOTTLE;
 
     public BatchItem(Properties properties, double defaultAbv, boolean drinkable, double defaultVolume) {
         this(properties, defaultAbv, drinkable, defaultVolume, Tincture.NONE, false);
@@ -75,6 +79,17 @@ public final class BatchItem extends Item {
     public double defaultVolume() { return defaultVolume; }
     public Tincture tincture() { return tincture; }
     public boolean technical() { return technical; }
+
+    /** Sets the empty vessel returned when the drink is finished. */
+    public BatchItem withContainer(Supplier<Item> container) {
+        this.emptyContainer = container == null ? () -> Items.GLASS_BOTTLE : container;
+        return this;
+    }
+
+    /** The empty vessel this drink leaves behind when poured out or drunk. */
+    public Item container() {
+        return emptyContainer.get();
+    }
 
     /**
      * Drink type derived from the batch history. The fixed classic tinctures
@@ -102,6 +117,13 @@ public final class BatchItem extends Item {
         if (!technical && BatchData.has(stack)) {
             Batch batch = BatchData.read(stack);
             SpiritType type = typeOf(batch);
+            // Beer is named by its style, not by the generic "Beer" type:
+            // "Wheat Beer", "Dark Beer", "Honey Beer" and so on.
+            if (type == SpiritType.BEER) {
+                Component custom = stack.get(DataComponents.CUSTOM_NAME);
+                if (custom != null) return custom;
+                return Component.translatable(BeerStyle.of(batch.origin()).translationKey());
+            }
             boolean ownTinctureName = tincture != Tincture.NONE && tincture != Tincture.OAK
                     && type != SpiritType.GIN && type != SpiritType.ABSINTHE
                     && type != SpiritType.LIQUEUR;
@@ -158,7 +180,16 @@ public final class BatchItem extends Item {
         lines.add(Component.translatable("tooltip.samogon.abv", String.format(Locale.ROOT, "%.1f", batch.abv()))
                 .withStyle(ChatFormatting.AQUA));
         SpiritType type = typeOf(batch);
-        if (!technical && (type == SpiritType.WASH || (batch.abv() > 0.1 && type.isDrink()))) {
+        if (type == SpiritType.BEER) {
+            BeerStyle style = BeerStyle.of(batch.origin());
+            lines.add(Component.translatable("tooltip.samogon.type",
+                    Component.translatable(type.translationKey()))
+                    .withStyle(ChatFormatting.LIGHT_PURPLE));
+            lines.add(Component.translatable(style.descriptionKey())
+                    .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+            lines.add(Component.translatable("tooltip.samogon.beer.mug")
+                    .withStyle(ChatFormatting.DARK_GRAY));
+        } else if (!technical && (type == SpiritType.WASH || (batch.abv() > 0.1 && type.isDrink()))) {
             lines.add(Component.translatable("tooltip.samogon.type",
                     Component.translatable(type.translationKey()))
                     .withStyle(ChatFormatting.LIGHT_PURPLE));
@@ -212,7 +243,7 @@ public final class BatchItem extends Item {
             }
             if (player == null || !player.getAbilities().instabuild) {
                 stack.shrink(1);
-                return new ItemStack(Items.GLASS_BOTTLE);
+                return new ItemStack(emptyContainer.get());
             }
         }
         return stack;

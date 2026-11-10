@@ -30,7 +30,13 @@ import net.minecraft.world.phys.BlockHitResult;
 import ru.samogon.registry.ModBlocks;
 
 public final class ProcessBlock extends Block implements EntityBlock {
-    public enum Kind { MASHING, FERMENTATION, DISTILLER, RECTIFIER, FILTER, BLENDING, DILUTION, AGING, TASTING }
+    /**
+     * New kinds must be appended: the kind is synced to the client as its
+     * ordinal, so inserting one would reinterpret existing machines.
+     * {@code BEER_FERMENTATION} is the standalone one-block barrel that turns
+     * hopped wort and yeast into beer, separate from the brewery multiblock.
+     */
+    public enum Kind { MASHING, FERMENTATION, DISTILLER, RECTIFIER, FILTER, BLENDING, DILUTION, AGING, TASTING, BEER_FERMENTATION }
 
     public static final IntegerProperty HEAT = IntegerProperty.create("heat", 0, 4);
     public static final BooleanProperty ACTIVE = BooleanProperty.create("active");
@@ -185,7 +191,7 @@ public final class ProcessBlock extends Block implements EntityBlock {
                             0.25f, 0.85f + random.nextFloat() * 0.2f, false);
                 }
             }
-            case FERMENTATION -> {
+            case FERMENTATION, BEER_FERMENTATION -> {
                 int rate = Math.max(3, 17 - progress * 2);
                 if (random.nextInt(rate) == 0) {
                     level.addParticle(ParticleTypes.BUBBLE_POP, x + spread(random, 0.32),

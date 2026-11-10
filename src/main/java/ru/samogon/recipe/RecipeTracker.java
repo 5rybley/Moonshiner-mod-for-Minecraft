@@ -13,6 +13,7 @@ import ru.samogon.SamogonMod;
 import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
 import ru.samogon.network.RecipePayload;
+import ru.samogon.process.BeerStyle;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.process.SpiritType;
 
@@ -109,6 +110,11 @@ public final class RecipeTracker {
         SpiritType type = item.typeOf(batch);
         if (type == null || !type.isDrink()) {
             return false;
+        }
+        // Beer reveals its style (pale, wheat, dark, honey...) rather than the
+        // generic BEER type, so the brewer's guide can unlock individual recipes.
+        if (type == SpiritType.BEER) {
+            return known.add(BeerStyle.of(batch.origin()).id());
         }
         return known.add(type.id());
     }

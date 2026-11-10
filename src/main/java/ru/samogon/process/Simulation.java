@@ -263,8 +263,9 @@ public final class Simulation {
             case 5 -> 94;
             default -> 96;
         };
-        // A column never weakens a charge that is already stronger than the
-        // next target, and it can never pass the azeotrope without a sieve.
+        // A column never drops below the strength the feed already has, but
+        // without a molecular sieve it cannot pass the 96 % azeotrope, so a
+        // stronger charge is diluted back down to it.
         target = Math.max(target, feed.abv());
         if (!sieve) target = Math.min(target, 96);
         target = Math.min(target, 99.5);

@@ -383,17 +383,26 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
 
     @Override
     public ItemStack removeItem(int slot, int amount) {
-        return inventory.removeItem(slot, amount);
+        ItemStack removed = inventory.removeItem(slot, amount);
+        if (!removed.isEmpty() && slot >= 0 && slot < BOTTLE_SLOTS) progress[slot] = 0;
+        return removed;
     }
 
     @Override
     public ItemStack removeItemNoUpdate(int slot) {
-        return inventory.removeItemNoUpdate(slot);
+        ItemStack removed = inventory.removeItemNoUpdate(slot);
+        if (!removed.isEmpty() && slot >= 0 && slot < BOTTLE_SLOTS) progress[slot] = 0;
+        return removed;
     }
 
     @Override
     public void setItem(int slot, ItemStack stack) {
         if (slot < BOTTLE_SLOTS && !stack.isEmpty()) stack.setCount(1);
+        // A different bottle reaching this slot starts a fresh maturation; only
+        // re-setting the identical stack keeps its progress.
+        if (slot >= 0 && slot < BOTTLE_SLOTS && !ItemStack.matches(inventory.getItem(slot), stack)) {
+            progress[slot] = 0;
+        }
         inventory.setItem(slot, stack);
     }
 

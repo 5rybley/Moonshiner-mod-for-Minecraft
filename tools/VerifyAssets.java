@@ -9,21 +9,22 @@ import java.awt.image.BufferedImage;
 public final class VerifyAssets {
     static final Path ASSETS = Path.of("src/main/resources/assets/samogon");
     static final Path DATA = Path.of("src/main/resources/data");
-    static final List<String> MACHINES = List.of("mash_tun", "fermentation_barrel", "distiller",
+    static final List<String> MACHINES = List.of("mash_tun", "fermentation_barrel", "beer_fermentation_barrel", "distiller",
             "reflux_column", "charcoal_filter", "dilution_basin", "blending_table", "aging_cask", "condenser",
             "tasting_table");
-    static final List<String> BLOCKS = List.of("mash_tun", "fermentation_barrel", "distiller",
+    static final List<String> BLOCKS = List.of("mash_tun", "fermentation_barrel", "beer_fermentation_barrel", "distiller",
             "reflux_column", "charcoal_filter", "dilution_basin", "blending_table", "aging_cask", "condenser",
-            "samogon_crate", "tasting_table");
+            "samogon_crate", "tasting_table", "brewery");
     /** Multi-block structures that are built in the world and have no item of their own. */
     static final List<String> STRUCTURES = List.of("aging_barrel");
     static final List<String> ITEMS = List.of("sweet_wort", "fermented_mash", "heads_fraction",
             "hearts_fraction", "tails_fraction", "neutral_spirit", "anhydrous_spirit", "filtered_spirit",
             "diluted_spirit", "berry_tincture", "honey_tincture", "botanical_tincture", "oak_aged_spirit",
             "spiced_tincture", "fruit_tincture", "marine_tincture", "brine",
-            "artisan_samogon",
+            "artisan_samogon", "hops", "beer_wort", "hopped_wort", "beer",
+            "roasted_malt", "wooden_mug",
             "yeast", "malt", "activated_charcoal", "botanical_bundle", "oak_chips", "molecular_sieve",
-            "thermometer", "hydrometer", "distillers_guide");
+            "thermometer", "hydrometer", "distillers_guide", "brewers_guide");
     static final Pattern TEXTURE_REF = Pattern.compile("\"texture\"\\s*:\\s*\"#([a-z0-9_]+)\"");
     /** Element rotation angle; Minecraft rejects anything but -45/-22.5/0/22.5/45. */
     static final Pattern ANGLE_REF = Pattern.compile("\"angle\"\\s*:\\s*(-?[0-9.]+)");
@@ -171,6 +172,55 @@ public final class VerifyAssets {
                 "guide.samogon.toc.memo")) {
             require(LANG_KEYS.contains(key), "missing guide language key " + key);
         }
+
+        // The brewer's handbook mirrors the distiller's guide chapters.
+        for (String page : List.of("overview", "malt", "mash", "boil", "ferment",
+                "bottle", "trouble", "memo")) {
+            require(LANG_KEYS.contains("guide.samogon.brewer.page." + page + ".title"),
+                    "missing brewer guide page language key " + page);
+            require(LANG_KEYS.contains("guide.samogon.brewer.page." + page + ".tag"),
+                    "missing brewer guide tag language key " + page);
+        }
+        for (String key : List.of("guide.samogon.brewer.title", "guide.samogon.brewer.book.title",
+                "guide.samogon.brewer.book.subtitle", "guide.samogon.brewer.tab.guide",
+                "guide.samogon.brewer.tab.recipes")) {
+            require(LANG_KEYS.contains(key), "missing brewer guide language key " + key);
+        }
+
+        // Beer styles and their recipe lines, including the hidden specialities.
+        for (String style : List.of("light", "wheat", "dark", "honey", "berry", "apple",
+                "ipa", "porter", "pilsner", "schwarz", "bock")) {
+            require(LANG_KEYS.contains("beer.samogon." + style),
+                    "missing beer style name " + style);
+            require(LANG_KEYS.contains("desc.samogon.beer." + style),
+                    "missing beer style description " + style);
+            require(LANG_KEYS.contains("guide.samogon.brewer.style.origin." + style),
+                    "missing beer style origin key " + style);
+        }
+        for (String grain : List.of("barley", "wheat", "roasted")) {
+            require(LANG_KEYS.contains("guide.samogon.brewer.recipe.step.mash." + grain),
+                    "missing beer mash step " + grain);
+        }
+        for (String additive : List.of("none", "honey", "berry", "apple", "hop", "cocoa")) {
+            require(LANG_KEYS.contains("guide.samogon.brewer.recipe.step.ferment." + additive),
+                    "missing beer fermentation step " + additive);
+        }
+        for (String family : List.of("ale", "lager")) {
+            require(LANG_KEYS.contains("guide.samogon.brewer.recipe.step.family." + family),
+                    "missing beer family step " + family);
+        }
+
+        // Every custom-model override on the beer mug must point at a real
+        // variant model, so a new style never renders as a missing texture.
+        String beerModel = read(ASSETS.resolve("models/item/beer.json"));
+        for (Matcher matcher = MODEL_REF.matcher(beerModel); matcher.find(); ) {
+            require(Files.exists(ASSETS.resolve("models/" + matcher.group(1) + ".json")),
+                    "beer.json points at missing model " + matcher.group(1));
+        }
+        Set<Integer> beerVariants = new TreeSet<>();
+        Matcher variantMatcher = Pattern.compile("\"custom_model_data\"\\s*:\\s*(\\d+)").matcher(beerModel);
+        while (variantMatcher.find()) beerVariants.add(Integer.parseInt(variantMatcher.group(1)));
+        require(beerVariants.size() >= 10, "beer.json lacks variant overrides, found " + beerVariants);
 
         Set<String> effects = new TreeSet<>();
         Matcher effectMatcher = Pattern.compile("EFFECTS\\.register\\(\"([a-z0-9_]+)\"")

@@ -67,7 +67,9 @@ public enum SpiritType {
     /** Sweet aromatic drink of low strength (kept for a future recipe). */
     LIQUEUR("liqueur", true),
     /** Spirit macerated with berries, herbs, spices or fruit; used by the tincture items. */
-    TINCTURE("tincture", true);
+    TINCTURE("tincture", true),
+    /** Top-fermented grain beer, brewed only in the brewery multiblock. */
+    BEER("beer", true);
 
     private final String id;
     private final boolean drink;
@@ -126,6 +128,15 @@ public enum SpiritType {
     public static SpiritType of(Batch batch) {
         if (batch == null) return WASH;
 
+        // Beer lives outside the distillation taxonomy: the brewery origin
+        // identifies it directly, before the "not distilled yet" wash check.
+        // The origin may carry a style suffix such as "beer:wheat:honey:ale".
+        // A brew that has already been through a still or the column is a
+        // spirit though, so it falls through and is classified by its grain.
+        if (Brewing.isFinishedBeer(batch)) return BEER;
+        String origin = Brewing.isBeerOrigin(batch.origin())
+                ? Brewing.grainOf(batch.origin()) : batch.origin();
+
         // 0. Not distilled yet: wort or fermented wash.
         if (batch.passes() <= 0) {
             return batch.abv() > 0.5 ? BRAGA : WASH;
@@ -149,7 +160,7 @@ public enum SpiritType {
 
         // 4. Oak aging: the aged-spirit family, chosen by the raw material.
         if (batch.oak() > 0) {
-            return switch (batch.origin()) {
+            return switch (origin) {
                 case "berry" -> batch.passes() >= 2 ? COGNAC : BRANDY;
                 case "apple" -> CALVADOS;
                 case "cane" -> CACHACA;
@@ -167,7 +178,7 @@ public enum SpiritType {
         }
 
         // 5. Plain fractionally pot-stilled hearts.
-        return switch (batch.origin()) {
+        return switch (origin) {
             case "berry" -> CHACHA;
             case "cane" -> CACHACA;
             case "potato" -> POTATO;
