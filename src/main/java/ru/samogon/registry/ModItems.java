@@ -2,6 +2,7 @@ package ru.samogon.registry;
 
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemNameBlockItem;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import ru.samogon.SamogonMod;
@@ -25,6 +26,9 @@ public final class ModItems {
     public static final DeferredItem<Item> MOLECULAR_SIEVE = simple("molecular_sieve");
     /** Hops: the bittering and aromatic charge of the brewery boil. */
     public static final DeferredItem<Item> HOPS = simple("hops");
+    /** Hop seeds: plant on farmland to grow the hop bine, or find them in ferns. */
+    public static final DeferredItem<Item> HOPS_SEEDS = ITEMS.registerItem("hops_seeds",
+            props -> new ItemNameBlockItem(ModBlocks.HOPS.get(), props), new Item.Properties());
     public static final DeferredItem<Item> THERMOMETER = tool("thermometer");
     public static final DeferredItem<HydrometerItem> HYDROMETER = ITEMS.registerItem("hydrometer",
             HydrometerItem::new, new Item.Properties().stacksTo(1));

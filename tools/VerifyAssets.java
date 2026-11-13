@@ -14,7 +14,7 @@ public final class VerifyAssets {
             "tasting_table");
     static final List<String> BLOCKS = List.of("mash_tun", "fermentation_barrel", "beer_fermentation_barrel", "distiller",
             "reflux_column", "charcoal_filter", "dilution_basin", "blending_table", "aging_cask", "condenser",
-            "samogon_crate", "tasting_table", "brewery");
+            "samogon_crate", "tasting_table", "brewery", "hops");
     /** Multi-block structures that are built in the world and have no item of their own. */
     static final List<String> STRUCTURES = List.of("aging_barrel");
     /** Blocks placed directly by a drink item; they have no item or loot table of their own. */
@@ -23,7 +23,7 @@ public final class VerifyAssets {
             "hearts_fraction", "tails_fraction", "neutral_spirit", "anhydrous_spirit", "filtered_spirit",
             "diluted_spirit", "berry_tincture", "honey_tincture", "botanical_tincture", "oak_aged_spirit",
             "spiced_tincture", "fruit_tincture", "marine_tincture", "brine",
-            "artisan_samogon", "hops", "beer_wort", "hopped_wort", "beer",
+            "artisan_samogon", "hops", "hops_seeds", "beer_wort", "hopped_wort", "beer",
             "roasted_malt", "wooden_mug",
             "yeast", "malt", "activated_charcoal", "botanical_bundle", "oak_chips", "molecular_sieve",
             "thermometer", "hydrometer", "distillers_guide", "brewers_guide");

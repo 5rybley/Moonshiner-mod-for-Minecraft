@@ -1,0 +1,12 @@
+{
+	"variants": {
+		"age=0": {"model": "samogon:block/hops_stage0"},
+		"age=1": {"model": "samogon:block/hops_stage0"},
+		"age=2": {"model": "samogon:block/hops_stage1"},
+		"age=3": {"model": "samogon:block/hops_stage1"},
+		"age=4": {"model": "samogon:block/hops_stage2"},
+		"age=5": {"model": "samogon:block/hops_stage2"},
+		"age=6": {"model": "samogon:block/hops_stage3"},
+		"age=7": {"model": "samogon:block/hops_stage3"}
+	}
+}

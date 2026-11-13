@@ -19,6 +19,7 @@ import ru.samogon.block.BreweryBlock;
 import ru.samogon.block.BreweryBlockEntity;
 import ru.samogon.block.CondenserBlock;
 import ru.samogon.block.CondenserBlockEntity;
+import ru.samogon.block.HopsCropBlock;
 import ru.samogon.block.PlacedDrinkBlock;
 import ru.samogon.block.PlacedDrinkBlockEntity;
 import ru.samogon.block.ProcessBlock;
@@ -60,6 +61,12 @@ public final class ModBlocks {
                     .strength(2.5f).sound(SoundType.COPPER).noOcclusion()));
     public static final DeferredItem<Item> CONDENSER_ITEM = BLOCK_ITEMS.register("condenser",
             () -> new CondenserItem(CONDENSER.get(), new Item.Properties()));
+    /**
+     * The hop crop. It deliberately has no block item: seeds plant it, and
+     * both the seeds and the harvested hops are ordinary items.
+     */
+    public static final DeferredBlock<Block> HOPS = BLOCKS.register("hops",
+            () -> new HopsCropBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.WHEAT)));
     public static final DeferredBlock<Block> SAMOGON_CRATE = BLOCKS.register("samogon_crate",
             () -> new SamogonCrateBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).noOcclusion()));
     public static final DeferredItem<Item> SAMOGON_CRATE_ITEM = BLOCK_ITEMS.register("samogon_crate",
