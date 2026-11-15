@@ -8,8 +8,10 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.CustomModelData;
 import ru.samogon.process.BeerStyle;
 import ru.samogon.process.Brewing;
+import ru.samogon.process.GrapeVariety;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.process.SpiritType;
+import ru.samogon.process.Wine;
 import ru.samogon.registry.ModItems;
 
 public final class BatchData {
@@ -51,6 +53,19 @@ public final class BatchData {
         }
         boolean wort = stack.is(ModItems.SWEET_WORT.get());
         boolean mash = stack.is(ModItems.FERMENTED_MASH.get());
+        // The winery items also carry their stage in the origin so a creative or
+        // /give stack without NBT still classifies as must, wine or sparkling.
+        boolean must = stack.is(ModItems.GRAPE_MUST.get());
+        boolean wine = stack.is(ModItems.WINE.get());
+        boolean sparkling = stack.is(ModItems.SPARKLING_WINE.get());
+        if (must || wine || sparkling) {
+            String red = Wine.Color.RED.id();
+            String cabernet = GrapeVariety.CABERNET.id();
+            String origin = must ? Wine.origin(Wine.MUST_ORIGIN, red, cabernet)
+                    : wine ? Wine.origin(Wine.WINE_ORIGIN, red, cabernet)
+                    : Wine.origin(Wine.SPARKLING_ORIGIN, red, cabernet, Wine.Dosage.BRUT.id());
+            return new Batch(item.defaultVolume(), item.defaultAbv(), 65, 5, 0, false, origin, 0);
+        }
         int quality = wort ? 55 : mash ? 65 : 72;
         int impurities = wort ? 0 : mash ? 55 : 30;
         int passes = wort || mash ? 0 : 2;
@@ -91,6 +106,17 @@ public final class BatchData {
             // Each beer style has its own coloured fill, so the mug shows the
             // drink's colour everywhere it is drawn (inventory, brewery, guide).
             int variant = BeerStyle.of(batch.origin()).variant();
+            if (variant > 0) {
+                stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(variant));
+            }
+        } else if (item == ModItems.WINE.get() || item == ModItems.SPARKLING_WINE.get()) {
+            // Wine bottles are tinted by the colour held in the batch origin:
+            // 0 red, 1 white, 2 rosé. Red is the default model.
+            int variant = switch (Wine.colorOf(batch.origin())) {
+                case WHITE -> 1;
+                case ROSE -> 2;
+                default -> 0;
+            };
             if (variant > 0) {
                 stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(variant));
             }

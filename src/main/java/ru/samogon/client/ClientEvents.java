@@ -42,6 +42,12 @@ public final class ClientEvents {
             }
             return true;
         }
+        if (stack.is(ModItems.WINEMAKERS_GUIDE.get())) {
+            if (!(Minecraft.getInstance().screen instanceof WinemakersGuideScreen)) {
+                Minecraft.getInstance().setScreen(new WinemakersGuideScreen());
+            }
+            return true;
+        }
         return false;
     }
 }

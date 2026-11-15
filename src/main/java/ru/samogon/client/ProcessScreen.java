@@ -16,6 +16,7 @@ import ru.samogon.process.MachineData;
 import ru.samogon.process.Quality;
 import ru.samogon.process.Simulation.Fraction;
 import ru.samogon.process.SpiritType;
+import ru.samogon.process.Wine;
 import ru.samogon.registry.ModBlocks;
 
 import java.util.Locale;
@@ -69,6 +70,8 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
     private ParchmentButton blendButton;
     private ParchmentButton fractionalButton;
     private ParchmentButton runsButton;
+    private ParchmentButton skinContactButton;
+    private ParchmentButton dosageButton;
 
     public ProcessScreen(ProcessMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -112,6 +115,21 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
                     Component.translatable("gui.samogon.button.blend.tooltip"));
             addRenderableWidget(blendButton);
         }
+        if (menu.kind() == ProcessBlock.Kind.PRESSING) {
+            skinContactButton = new ParchmentButton(leftPos + 278, topPos + 10, 88, 20,
+                    Component.translatable("gui.samogon.button.skin_contact"),
+                    button -> sendMenuButton(5),
+                    Component.translatable("gui.samogon.button.skin_contact.tooltip"));
+            addRenderableWidget(skinContactButton);
+        }
+        if (menu.kind() == ProcessBlock.Kind.SPARKLING) {
+            dosageButton = new ParchmentButton(leftPos + 278, topPos + 10, 88, 20,
+                    Component.translatable("gui.samogon.button.dosage",
+                            Component.translatable(Wine.Dosage.BRUT.translationKey())),
+                    button -> sendMenuButton(6),
+                    Component.translatable("gui.samogon.button.dosage.tooltip"));
+            addRenderableWidget(dosageButton);
+        }
     }
 
     @Override
@@ -135,6 +153,23 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
         if (blendButton != null) {
             blendButton.active = menu.data(MachineData.STAGE) == 1 && menu.additiveCount() > 0;
         }
+        if (skinContactButton != null) {
+            boolean contact = menu.data(MachineData.PRESS_SKIN_CONTACT) == 1;
+            skinContactButton.setMessage(Component.translatable(contact
+                    ? "gui.samogon.button.skin_contact" : "gui.samogon.button.no_skin_contact"));
+            skinContactButton.active = menu.data(MachineData.STAGE) == 0;
+        }
+        if (dosageButton != null) {
+            int index = menu.data(MachineData.SPARKLING_DOSAGE);
+            dosageButton.setMessage(Component.translatable("gui.samogon.button.dosage",
+                    dosageName(index)));
+            dosageButton.active = menu.data(MachineData.STAGE) <= 1;
+        }
+    }
+
+    /** Translated name of the sweetness the bottle rack is set to. */
+    private static Component dosageName(int index) {
+        return Component.translatable(Wine.Dosage.byIndex(index).translationKey());
     }
 
     private void sendMenuButton(int id) {
@@ -207,6 +242,10 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
             tooltip = fractionalButton.tooltip();
         } else if (isOver(runsButton, mouseX, mouseY)) {
             tooltip = runsButton.tooltip();
+        } else if (isOver(skinContactButton, mouseX, mouseY)) {
+            tooltip = skinContactButton.tooltip();
+        } else if (isOver(dosageButton, mouseX, mouseY)) {
+            tooltip = dosageButton.tooltip();
         } else if (hoveredSlot != null && hoveredSlot.index <= ProcessMenu.SLOT_OUTPUT
                 && !hoveredSlot.hasItem() && menu.getCarried().isEmpty()) {
             tooltip = slotHint(hoveredSlot.index);
@@ -311,12 +350,12 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
                     menu.data(MachineData.BATCH_FILTERED) == 1
                             ? Component.translatable("message.samogon.yes")
                             : Component.translatable("message.samogon.no"));
-            case MASHING -> graphics.drawString(font,
-                    Component.translatable("gui.samogon.hint.heat_below"),
-                    x + METRIC_LEFT, extraY, COPPER_DARK, false);
-            case FERMENTATION, BEER_FERMENTATION -> graphics.drawString(font,
-                    Component.translatable("gui.samogon.hint.ferment_temp"),
-                    x + METRIC_LEFT, extraY, COPPER_DARK, false);
+            case MASHING -> hint(graphics, x + METRIC_LEFT, extraY,
+                    "gui.samogon.hint.heat_below");
+            case FERMENTATION, BEER_FERMENTATION, SPARKLING -> hint(graphics, x + METRIC_LEFT, extraY,
+                    "gui.samogon.hint.ferment_temp");
+            case PRESSING -> hint(graphics, x + METRIC_LEFT, extraY,
+                    "gui.samogon.hint.press");
             default -> metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, extraY,
                     "gui.samogon.metric.coolant", Integer.toString(coolant));
         }
@@ -415,24 +454,30 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
                 ? Component.translatable("fraction.samogon." + receiver.id())
                 : Component.translatable("gui.samogon.mode.whole");
 
-        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP,
+        // The still carries three buttons down the right edge (receiver, clear,
+        // fractions), the lowest one ending just below METRIC_TOP. Every other
+        // machine has at most one button, so only the still needs its readouts
+        // pushed one row down to keep the pressure value out from under it.
+        int top = y + METRIC_TOP + METRIC_STEP;
+
+        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, top,
                 "gui.samogon.metric.pot", present ? f1(stillTemp) : "\u2014");
-        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP,
+        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, top,
                 "gui.samogon.metric.pressure", present ? f2(pressure) : "\u2014");
-        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP + METRIC_STEP,
+        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, top + METRIC_STEP,
                 "gui.samogon.metric.abv", present ? f1(stillAbv) : "\u2014");
-        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP + METRIC_STEP,
+        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, top + METRIC_STEP,
                 "gui.samogon.metric.heat", Integer.toString(heat));
-        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, y + METRIC_TOP + METRIC_STEP * 2,
+        metric(graphics, x + METRIC_LEFT, x + METRIC_LEFT_VALUE, top + METRIC_STEP * 2,
                 "gui.samogon.metric.coolant", Integer.toString(coolant));
-        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, y + METRIC_TOP + METRIC_STEP * 2,
+        metric(graphics, x + METRIC_RIGHT, x + METRIC_RIGHT_VALUE, top + METRIC_STEP * 2,
                 "gui.samogon.metric.receiver", receiverValue);
 
         graphics.drawString(font, Component.translatable("gui.samogon.metric.cuts",
                         menu.data(MachineData.HEADS_VOLUME),
                         menu.data(MachineData.HEARTS_VOLUME),
                         menu.data(MachineData.TAILS_VOLUME)),
-                x + METRIC_LEFT, y + METRIC_TOP + METRIC_STEP * 3, COPPER_DARK, false);
+                x + METRIC_LEFT, top + METRIC_STEP * 3, COPPER_DARK, false);
     }
 
     private void metric(GuiGraphics graphics, int labelX, int valueRight, int y,
@@ -455,6 +500,18 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
         }
         graphics.drawString(font, pair[0], x, y, SOFT, false);
         graphics.drawString(font, pair[1], x + font.width(pair[0]) + 4, y, INK, false);
+    }
+
+    /**
+     * A short piece of advice wrapped to the left metric column so a long hint
+     * can never run under the right-hand column of readouts.
+     */
+    private void hint(GuiGraphics graphics, int x, int y, String key) {
+        int width = METRIC_RIGHT - METRIC_LEFT - 6;
+        var lines = font.split(Component.translatable(key), width);
+        for (int i = 0; i < lines.size(); i++) {
+            graphics.drawString(font, lines.get(i), x, y + i * 9, COPPER_DARK, false);
+        }
     }
 
     private static String[] splitLabel(String full) {
@@ -534,6 +591,8 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
             case AGING -> 0xFFA47A2D;
             case TASTING -> 0xFF7A4E8C;
             case BEER_FERMENTATION -> 0xFF7E7A34;
+            case PRESSING -> 0xFF7A2740;
+            case SPARKLING -> 0xFFB08430;
         };
     }
 
@@ -549,6 +608,8 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
             case AGING -> ModBlocks.AGING_CASK.get();
             case TASTING -> ModBlocks.TASTING_TABLE.get();
             case BEER_FERMENTATION -> ModBlocks.BEER_FERMENTATION_BARREL.get();
+            case PRESSING -> ModBlocks.WINE_PRESS.get();
+            case SPARKLING -> ModBlocks.BOTTLE_RACK.get();
         });
     }
 
@@ -587,9 +648,23 @@ public final class ProcessScreen extends AbstractContainerScreen<ProcessMenu> {
 
             var font = Minecraft.getInstance().font;
             int textColor = active ? INK : 0xFF6F5A42;
-            int tx = getX() + (getWidth() - font.width(getMessage())) / 2;
-            int ty = getY() + (getHeight() - 8) / 2;
-            graphics.drawString(font, getMessage(), tx, ty, textColor, false);
+            Component label = getMessage();
+            int textW = font.width(label);
+            // Long values (a dosage of "extra dry", and the like) may not fit the
+            // 88 px plate; shrink the whole label just enough that it stays inside.
+            float scale = textW > getWidth() - 6 ? (getWidth() - 6) / (float) textW : 1.0F;
+            float ty = getY() + (getHeight() - 8 * scale) / 2.0F;
+            if (scale >= 1.0F) {
+                int tx = getX() + (getWidth() - textW) / 2;
+                graphics.drawString(font, label, tx, Math.round(ty), textColor, false);
+            } else {
+                float tx = getX() + (getWidth() - textW * scale) / 2.0F;
+                graphics.pose().pushPose();
+                graphics.pose().translate(tx, ty, 0.0F);
+                graphics.pose().scale(scale, scale, 1.0F);
+                graphics.drawString(font, label, 0, 0, textColor, false);
+                graphics.pose().popPose();
+            }
         }
     }
 }

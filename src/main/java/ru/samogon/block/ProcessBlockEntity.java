@@ -5,8 +5,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -36,6 +38,7 @@ import ru.samogon.process.BeerStyle;
 import ru.samogon.process.BlendCatalog;
 import ru.samogon.process.Brewing;
 import ru.samogon.process.Environment;
+import ru.samogon.process.GrapeVariety;
 import ru.samogon.process.MachineData;
 import ru.samogon.process.Quality;
 import ru.samogon.process.Simulation;
@@ -44,6 +47,8 @@ import ru.samogon.process.Simulation.Fraction;
 import ru.samogon.process.SpiritType;
 import ru.samogon.process.StillNbt;
 import ru.samogon.process.StillRun;
+import ru.samogon.process.Wine;
+import ru.samogon.process.WineStyle;
 import ru.samogon.registry.ModBlocks;
 import ru.samogon.registry.ModItems;
 import ru.samogon.registry.ModSounds;
@@ -78,6 +83,10 @@ public final class ProcessBlockEntity extends BlockEntity {
     private static final int MUG = 500;
     /** Hop boil to bottling time for the standalone beer barrel. */
     private static final int BEER_FERMENT_TICKS = 4000;
+    /** Crushing one charge of grapes. */
+    private static final int PRESS_TICKS = 200;
+    /** Tirage, second fermentation, lees ageing, riddling, disgorging and dosage. */
+    private static final int SPARKLING_TICKS = 6000;
 
     public static final int SLOT_INPUT = 0;
     public static final int SLOT_ADDITIVE = 1;
@@ -152,6 +161,8 @@ public final class ProcessBlockEntity extends BlockEntity {
                 case MachineData.TASTING_AURA_COUNT -> tastingAuraCount;
                 case MachineData.TASTING_TECHNICAL -> tastingTechnical;
                 case MachineData.TASTING_DRINKABLE -> tastingDrinkable;
+                case MachineData.PRESS_SKIN_CONTACT -> skinContact ? 1 : 0;
+                case MachineData.SPARKLING_DOSAGE -> dosage;
                 default -> 0;
             };
         }
@@ -184,6 +195,10 @@ public final class ProcessBlockEntity extends BlockEntity {
     private boolean sieve;
     private boolean announcedDone;
     private Batch batch;
+    /** Spirit bottle loaded into the blending table for fortification. */
+    private Batch fortifyBatch;
+    /** Item of that spirit bottle, so it can be handed back if the block breaks. */
+    private Item fortifyItem;
     private StillRun still;
     private String agingKind = "";
     private String blendComposition = "";
@@ -196,6 +211,10 @@ public final class ProcessBlockEntity extends BlockEntity {
     private int columnRunsTarget = 1;
     /** Passes still to perform for the currently loaded rectifier charge. */
     private int columnRunsLeft;
+    /** Wine press: keep the skins in contact (red) or press straight off (rosé). */
+    private boolean skinContact = true;
+    /** Bottle rack: selected dosage, as the ordinal of {@code Wine.Dosage}. */
+    private int dosage = Wine.Dosage.BRUT.ordinal();
     /**
      * The tasting table never runs a process: it only reads a bottle with a
      * hydrometer. Its batch is kept apart from the process batch so breaking
@@ -218,7 +237,7 @@ public final class ProcessBlockEntity extends BlockEntity {
     }
 
     public ProcessBlock.Kind kind() {
-        return ((ProcessBlock) getBlockState().getBlock()).kind();
+        return ((ProcessMachine) getBlockState().getBlock()).kind();
     }
 
     public Container inventory() {
@@ -285,6 +304,15 @@ public final class ProcessBlockEntity extends BlockEntity {
                 Block.popResource(level, worldPosition, BatchData.create(output, portion));
             }
         }
+        if (fortifyBatch != null) {
+            // A fortification blend consumes the spirit from the additive slot
+            // and keeps only its batch. Breaking the table must hand that bottle
+            // back instead of destroying it.
+            Block.popResource(level, worldPosition, BatchData.create(
+                    fortifyItem != null ? fortifyItem : ModItems.NEUTRAL_SPIRIT.get(), fortifyBatch));
+            fortifyBatch = null;
+            fortifyItem = null;
+        }
         stage = 0;
         progress = 0;
         duration = 0;
@@ -299,15 +327,26 @@ public final class ProcessBlockEntity extends BlockEntity {
     private Item inProcessItem() {
         return switch (kind()) {
             case MASHING -> ModItems.SWEET_WORT.get();
-            case FERMENTATION -> stage <= 1 ? ModItems.SWEET_WORT.get() : ModItems.FERMENTED_MASH.get();
+            case FERMENTATION -> {
+                // The barrel is shared: a must still waiting for yeast leaves as
+                // grape must, a finished wine as a wine bottle, and only a plain
+                // wash keeps the old wort/mash bottle.
+                if (Wine.isMust(batch)) yield ModItems.GRAPE_MUST.get();
+                if (Wine.isWine(batch)) yield ModItems.WINE.get();
+                yield stage <= 1 ? ModItems.SWEET_WORT.get() : ModItems.FERMENTED_MASH.get();
+            }
             case DISTILLER -> ModItems.HEARTS_FRACTION.get();
             case RECTIFIER -> batch != null && batch.abv() >= 99
                     ? ModItems.ANHYDROUS_SPIRIT.get() : ModItems.NEUTRAL_SPIRIT.get();
             case FILTER -> ModItems.FILTERED_SPIRIT.get();
-            case BLENDING -> isBeerBatch() ? ModItems.BEER.get() : ModItems.SAMOGON.get();
+            case BLENDING -> Wine.isWine(batch) ? ModItems.WINE.get()
+                    : Wine.isSparkling(batch) ? ModItems.SPARKLING_WINE.get()
+                    : isBeerBatch() ? ModItems.BEER.get() : ModItems.SAMOGON.get();
             case DILUTION -> ModItems.DILUTED_SPIRIT.get();
-            case AGING -> ModItems.OAK_AGED_SPIRIT.get();
+            case AGING -> Wine.isWine(batch) ? ModItems.WINE.get() : ModItems.OAK_AGED_SPIRIT.get();
             case BEER_FERMENTATION -> ModItems.BEER.get();
+            case PRESSING -> ModItems.GRAPE_MUST.get();
+            case SPARKLING -> ModItems.SPARKLING_WINE.get();
             // The tasting table never bottles anything: the sample stays on it.
             case TASTING -> null;
         };
@@ -337,6 +376,33 @@ public final class ProcessBlockEntity extends BlockEntity {
 
     public boolean isFractional() {
         return still != null ? still.fractional() : fractional;
+    }
+
+    /**
+     * Wine press: switches between a red maceration (skins stay in contact)
+     * and a straight pressing that gives rosé. Locked once the press runs.
+     */
+    public boolean cycleSkinContact() {
+        if (kind() != ProcessBlock.Kind.PRESSING || stage == 3) return false;
+        skinContact = !skinContact;
+        setChanged();
+        return true;
+    }
+
+    public boolean skinContact() {
+        return skinContact;
+    }
+
+    /** Bottle rack: cycles the dosage, from brut nature to doux. */
+    public boolean cycleDosage() {
+        if (kind() != ProcessBlock.Kind.SPARKLING || stage == 3) return false;
+        dosage = (dosage + 1) % Wine.Dosage.values().length;
+        setChanged();
+        return true;
+    }
+
+    public int dosageIndex() {
+        return dosage;
     }
 
     /** Cycles the desired number of passes through the rectification column. */
@@ -415,7 +481,40 @@ public final class ProcessBlockEntity extends BlockEntity {
     }
 
     private static boolean isBlendAdditive(ItemStack stack) {
-        return stack.is(Items.WATER_BUCKET) || BlendCatalog.find(stack) != null;
+        return stack.is(Items.WATER_BUCKET) || BlendCatalog.find(stack) != null
+                || isFortifyingSpirit(stack) || isCuveePartner(stack);
+    }
+
+    /**
+     * A bottle of plain still wine can marry the wine already in the table into
+     * a cuvée. Port, sherry and aromatized wines are finished and rejected, as
+     * are sparkling wines: only a still wine is a blending partner.
+     */
+    private static boolean isCuveePartner(ItemStack stack) {
+        if (!(stack.getItem() instanceof BatchItem)) return false;
+        try {
+            Batch batch = BatchData.read(stack);
+            return batch != null && batch.volume() >= 100 && Wine.canFortify(batch);
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * A bottle of strong spirit can fortify a still wine at the blending table.
+     * Wine, beer and grape batches are rejected: the point is a distilled
+     * spirit, not another wine or a brew.
+     */
+    private static boolean isFortifyingSpirit(ItemStack stack) {
+        if (!(stack.getItem() instanceof BatchItem)) return false;
+        try {
+            Batch batch = BatchData.read(stack);
+            return batch != null && batch.abv() >= 30 && batch.volume() >= 100
+                    && !Wine.isGrape(batch) && !Brewing.isBrew(batch)
+                    && SpiritType.of(batch) != SpiritType.BEER;
+        } catch (RuntimeException ignored) {
+            return false;
+        }
     }
 
     /**
@@ -431,6 +530,11 @@ public final class ProcessBlockEntity extends BlockEntity {
 
         boolean hasWater = false;
         int waterSlots = 0;
+        Batch fortifier = null;
+        int fortifierSlot = -1;
+        Item fortifierItem = null;
+        Batch cuveePartner = null;
+        int cuveeSlot = -1;
         List<BlendCatalog.Additive> additives = new ArrayList<>();
         List<Integer> filledSlots = new ArrayList<>();
         for (int i = SLOT_ADDITIVE; i <= SLOT_ADDITIVE_LAST; i++) {
@@ -442,6 +546,19 @@ public final class ProcessBlockEntity extends BlockEntity {
                 waterSlots++;
                 continue;
             }
+            if (isFortifyingSpirit(stack)) {
+                if (fortifier != null) return false;
+                fortifier = BatchData.read(stack);
+                fortifierSlot = i;
+                fortifierItem = stack.getItem();
+                continue;
+            }
+            if (isCuveePartner(stack)) {
+                if (cuveePartner != null) return false;
+                cuveePartner = BatchData.read(stack);
+                cuveeSlot = i;
+                continue;
+            }
             BlendCatalog.Additive additive = BlendCatalog.find(stack);
             if (additive == null) {
                 return false;
@@ -449,11 +566,82 @@ public final class ProcessBlockEntity extends BlockEntity {
             additives.add(additive);
         }
 
-        if (hasWater && (additives.size() > 0 || waterSlots > 1)) {
+        if (hasWater && (additives.size() > 0 || waterSlots > 1 || fortifier != null
+                || cuveePartner != null)) {
             return false;
         }
-        if (additives.isEmpty() && !hasWater) {
+        if (additives.isEmpty() && !hasWater && fortifier == null && cuveePartner == null) {
             return false;
+        }
+
+        if (cuveePartner != null) {
+            // A cuvée is the wine already in the table plus one bottle of
+            // another still wine. It is married immediately: the base is
+            // loaded, so there is no work left for a timer to represent.
+            if (hasWater || !additives.isEmpty() || fortifier != null
+                    || filledSlots.size() != 1) {
+                return false;
+            }
+            if (!Wine.canFortify(batch)) {
+                refuse(player, "message.samogon.blend.cuvee.base");
+                return false;
+            }
+            Batch married;
+            try {
+                married = Wine.cuvee(batch, cuveePartner);
+            } catch (IllegalArgumentException exception) {
+                refuse(player, "message.samogon.blend.cuvee.base");
+                return false;
+            }
+            consumeSlot(cuveeSlot);
+            returnContainer(Items.GLASS_BOTTLE);
+            batch = married;
+            agingKind = "";
+            blendComposition = "";
+            fortifyBatch = null;
+            fortifyItem = null;
+            stage = 4;
+            progress = 0;
+            duration = 0;
+            active = false;
+            burst(ParticleTypes.SPLASH, 18, 0.3, 0.03);
+            if (level != null) {
+                level.playSound(null, worldPosition, SoundEvents.BUCKET_EMPTY,
+                        SoundSource.BLOCKS, 0.5f, 1.1f);
+            }
+            setChanged();
+            return true;
+        }
+
+        // Aromatizing is for a plain still wine. A port or sherry is finished:
+        // berries would replace its style instead of making a sangria, so the
+        // table refuses before anything is consumed.
+        if (fortifier == null && !hasWater && Wine.isWine(batch) && !Wine.canAromatize(batch)) {
+            refuse(player, "message.samogon.blend.fortified");
+            return false;
+        }
+
+        if (fortifier != null) {
+            // Fortification is one bottle of spirit and one still wine; mixing
+            // it with aromatics would lose either the port or the vermouth.
+            if (hasWater || !additives.isEmpty() || filledSlots.size() != 1) {
+                return false;
+            }
+            if (!Wine.canFortify(batch)) {
+                refuse(player, "message.samogon.blend.finished");
+                return false;
+            }
+            consumeSlot(fortifierSlot);
+            returnContainer(Items.GLASS_BOTTLE);
+            fortifyBatch = fortifier;
+            fortifyItem = fortifierItem;
+            blendComposition = "";
+            agingKind = "fortify";
+            stage = 3;
+            progress = 0;
+            duration = BLEND_TICKS;
+            setChanged();
+            return true;
         }
 
         if (hasWater) {
@@ -494,6 +682,13 @@ public final class ProcessBlockEntity extends BlockEntity {
         return true;
     }
 
+    /** Short action-bar note when the blending table refuses a finished wine. */
+    private static void refuse(Player player, String key) {
+        if (player != null) {
+            player.displayClientMessage(Component.translatable(key), true);
+        }
+    }
+
     /** Adds one manually held additive to the first free tray slot. */
     private boolean addBlendAdditive(Player player, ItemStack stack) {
         if (!isBlendAdditive(stack)) return false;
@@ -525,6 +720,8 @@ public final class ProcessBlockEntity extends BlockEntity {
             case BLENDING -> tickBlending();
             case DILUTION -> tickDilution();
             case AGING -> tickAging();
+            case PRESSING -> tickPressing();
+            case SPARKLING -> tickSparkling();
             case TASTING -> refreshTasting();
         }
         updateTemperature();
@@ -744,6 +941,36 @@ public final class ProcessBlockEntity extends BlockEntity {
                 stage = 1;
                 progress = 0;
                 duration = 0;
+                agingKind = "";
+                fortifyBatch = null;
+                fortifyItem = null;
+                active = false;
+                return true;
+            }
+            case PRESSING -> {
+                // Only whole grapes are charged. White grapes always make white
+                // must; red grapes make red with skin contact and rosé without.
+                // The variety travels into the must and names the wine later.
+                GrapeVariety variety = ModItems.varietyOf(stack);
+                if (variety == null) return false;
+                batch = Wine.must(mustColor(variety, skinContact), variety);
+                stage = 3;
+                progress = 0;
+                duration = PRESS_TICKS;
+                settle = 0;
+                active = false;
+                return true;
+            }
+            case SPARKLING -> {
+                // The rack is charged with a dry still wine; the sugar for the
+                // tirage and the dosage goes into the additive slot afterwards.
+                Batch wine = readBatch(stack);
+                if (!Wine.isStillWine(wine)) return false;
+                batch = wine;
+                stage = 1;
+                progress = 0;
+                duration = 0;
+                settle = 0;
                 active = false;
                 return true;
             }
@@ -826,13 +1053,44 @@ public final class ProcessBlockEntity extends BlockEntity {
                 duration = DILUTION_TICKS;
             }
             case AGING -> {
-                if (batch == null || !additive.is(ModItems.OAK_CHIPS.get())) return;
-                consumeSlot(SLOT_ADDITIVE);
+                if (batch == null) return;
+                if (Wine.isWine(batch) && additive.is(Items.SUGAR)) {
+                    // The cask sweetens wine after fermentation: the number of
+                    // sugar items chooses the sweetness band. Consume the whole
+                    // charge so no leftovers trigger a second cycle later.
+                    int count = additive.getCount();
+                    for (int i = 0; i < count; i++) {
+                        consumeSlot(SLOT_ADDITIVE);
+                    }
+                    agingKind = "wine_sugar:" + count;
+                } else if (additive.is(ModItems.OAK_CHIPS.get())) {
+                    consumeSlot(SLOT_ADDITIVE);
+                    agingKind = Wine.isWine(batch) ? "oak" : "";
+                } else {
+                    return;
+                }
                 stage = 3;
                 progress = 0;
                 duration = AGE_TICKS;
             }
-            case MASHING, DISTILLER, TASTING -> {
+            case SPARKLING -> {
+                // Sugar is the tirage charge and the dosage together; how many
+                // items it costs depends on the selected sweetness.
+                if (batch == null || !additive.is(Items.SUGAR)) return;
+                int cost = Wine.Dosage.byIndex(dosage).sugarItems();
+                if (additive.getCount() < cost) return;
+                for (int i = 0; i < cost; i++) {
+                    consumeSlot(SLOT_ADDITIVE);
+                }
+                stage = 3;
+                progress = 0;
+                duration = SPARKLING_TICKS;
+                deviationSum = 0;
+                deviationSamples = 0;
+                ambientSum = 0;
+                ambientSamples = 0;
+            }
+            case MASHING, DISTILLER, PRESSING, TASTING -> {
                 return;
             }
         }
@@ -923,9 +1181,16 @@ public final class ProcessBlockEntity extends BlockEntity {
     /** Volume drawn from the batch by one bottle or mug of the current kind. */
     private double outputVolume() {
         return switch (kind()) {
-            case MASHING, FERMENTATION -> JAR;
+            case MASHING -> JAR;
+            case FERMENTATION -> Wine.isWine(batch) ? Wine.BOTTLE_VOLUME : JAR;
+            case PRESSING -> Wine.MUST_VOLUME;
+            case SPARKLING -> Wine.BOTTLE_VOLUME;
+            case AGING -> Wine.isWine(batch) ? Wine.BOTTLE_VOLUME : BOTTLE;
             case BEER_FERMENTATION -> MUG;
-            case BLENDING -> isBeerBatch() ? MUG : BOTTLE;
+            // Wine keeps its own bottle size at the blending table: a cuvée of
+            // two bottles must not turn into a tray of tiny spirit samples.
+            case BLENDING -> isBeerBatch() ? MUG
+                    : Wine.isWine(batch) ? Wine.BOTTLE_VOLUME : BOTTLE;
             default -> BOTTLE;
         };
     }
@@ -944,14 +1209,16 @@ public final class ProcessBlockEntity extends BlockEntity {
     private Item outputItem() {
         return switch (kind()) {
             case MASHING -> ModItems.SWEET_WORT.get();
-            case FERMENTATION -> ModItems.FERMENTED_MASH.get();
+            case FERMENTATION -> Wine.isWine(batch) ? ModItems.WINE.get() : ModItems.FERMENTED_MASH.get();
             case RECTIFIER -> batch != null && batch.abv() >= 99
                     ? ModItems.ANHYDROUS_SPIRIT.get() : ModItems.NEUTRAL_SPIRIT.get();
             case FILTER -> ModItems.FILTERED_SPIRIT.get();
             case BLENDING -> blendOutput();
             case DILUTION -> ModItems.DILUTED_SPIRIT.get();
-            case AGING -> ModItems.OAK_AGED_SPIRIT.get();
+            case AGING -> Wine.isWine(batch) ? ModItems.WINE.get() : ModItems.OAK_AGED_SPIRIT.get();
             case BEER_FERMENTATION -> ModItems.BEER.get();
+            case PRESSING -> ModItems.GRAPE_MUST.get();
+            case SPARKLING -> ModItems.SPARKLING_WINE.get();
             case DISTILLER, TASTING -> null;
         };
     }
@@ -962,6 +1229,10 @@ public final class ProcessBlockEntity extends BlockEntity {
      * whose dynamic name, composition and aroma live in the batch data.
      */
     private Item blendOutput() {
+        // Wine stays wine: the blending table aromatizes or fortifies it, it
+        // never turns a bottle of wine into an artisan tincture.
+        if (batch != null && Wine.isWine(batch)) return ModItems.WINE.get();
+        if (batch != null && Wine.isSparkling(batch)) return ModItems.SPARKLING_WINE.get();
         // A blended brew stays beer and is served in a mug; only spirits are
         // bottled in glass.
         if (isBeerBatch()) return ModItems.BEER.get();
@@ -1058,9 +1329,14 @@ public final class ProcessBlockEntity extends BlockEntity {
         double averageTemperature = ambientSamples == 0 ? 20 : ambientSum / ambientSamples;
         // The standalone beer barrel runs the brewery's own top fermentation,
         // so the finished mug keeps its grain and flavouring in the origin.
-        batch = kind() == ProcessBlock.Kind.BEER_FERMENTATION
-                ? Brewing.ferment(batch, averageDeviation, averageTemperature, fermentAdditive)
-                : Simulation.ferment(batch, averageDeviation, averageTemperature);
+        // Grape must ferments in the same barrel, but along the winery chain.
+        if (kind() == ProcessBlock.Kind.BEER_FERMENTATION) {
+            batch = Brewing.ferment(batch, averageDeviation, averageTemperature, fermentAdditive);
+        } else if (Wine.isMust(batch)) {
+            batch = Wine.ferment(batch, averageTemperature);
+        } else {
+            batch = Simulation.ferment(batch, averageDeviation, averageTemperature);
+        }
         stage = 3;
         active = false;
         progress = duration;
@@ -1231,12 +1507,23 @@ public final class ProcessBlockEntity extends BlockEntity {
                 case "berry" -> Simulation.infuse(batch, "berry");
                 case "honey" -> Simulation.infuse(batch, "honey");
                 case "botanical" -> Simulation.infuse(batch, "botanical");
-                case "blend" -> BlendCatalog.blend(batch, BlendCatalog.decode(blendComposition));
+                case "blend" -> {
+                    Batch blended = BlendCatalog.blend(batch,
+                            BlendCatalog.decode(blendComposition));
+                    if (Wine.isWine(batch)) {
+                        WineStyle aroma = BlendCatalog.wineAroma(blendComposition);
+                        yield aroma == null ? blended : Wine.aromatize(blended, aroma);
+                    }
+                    yield blended;
+                }
+                case "fortify" -> Wine.fortify(batch, fortifyBatch);
                 default -> throw new IllegalArgumentException("Unknown blend");
             };
             stage = 4;
             active = false;
             progress = duration;
+            fortifyBatch = null;
+            fortifyItem = null;
             burst(ParticleTypes.SPLASH, 18, 0.3, 0.03);
             level.playSound(null, worldPosition, SoundEvents.BUCKET_EMPTY,
                     SoundSource.BLOCKS, 0.5f, 1.1f);
@@ -1246,6 +1533,8 @@ public final class ProcessBlockEntity extends BlockEntity {
             progress = 0;
             agingKind = "";
             blendComposition = "";
+            fortifyBatch = null;
+            fortifyItem = null;
         }
         setChanged();
     }
@@ -1291,7 +1580,21 @@ public final class ProcessBlockEntity extends BlockEntity {
         progress++;
         if (progress < duration) return;
         try {
-            batch = Simulation.mature(batch, true);
+            if (Wine.isWine(batch)) {
+                // Still wine in the cask: oak chips make a barrel-aged wine,
+                // sugar chooses a sweetness band, and a bare cycle just settles.
+                if (agingKind.startsWith("wine_sugar:")) {
+                    int count = sugarCharge(agingKind);
+                    batch = Wine.sweeten(batch, count);
+                } else if ("oak".equals(agingKind)) {
+                    batch = Wine.oak(batch);
+                } else {
+                    batch = Wine.age(batch);
+                }
+            } else {
+                batch = Simulation.mature(batch, true);
+            }
+            agingKind = "";
             stage = 4;
             active = false;
             progress = duration;
@@ -1302,8 +1605,73 @@ public final class ProcessBlockEntity extends BlockEntity {
             stage = 1;
             active = false;
             progress = 0;
+            agingKind = "";
         }
         setChanged();
+    }
+
+    /** Reads the sugar charge from the cask's aging kind, defaulting to one. */
+    private static int sugarCharge(String kind) {
+        int separator = kind.indexOf(':');
+        if (separator < 0) return 1;
+        try {
+            return Math.max(1, Integer.parseInt(kind.substring(separator + 1)));
+        } catch (NumberFormatException ignored) {
+            return 1;
+        }
+    }
+
+    /**
+     * Crushing and pressing grapes into must. The press needs no heat: the
+     * batch was already formed by {@code loadInput} when the grapes were
+     * charged, and the timer only paces the crush.
+     */
+    private void tickPressing() {
+        if (stage != 3) return;
+        if (batch == null) {
+            stage = 0;
+            active = false;
+            progress = 0;
+            return;
+        }
+        if (duration <= 0) duration = PRESS_TICKS;
+        active = true;
+        progress++;
+        if (progress < duration) return;
+        stage = 4;
+        active = false;
+        progress = duration;
+        setChanged();
+        burst(ParticleTypes.SPLASH, 18, 0.32, 0.03);
+        level.playSound(null, worldPosition, SoundEvents.BUCKET_EMPTY,
+                SoundSource.BLOCKS, 0.55f, 1.15f);
+    }
+
+    /**
+     * The traditional method in one long run: tirage, second fermentation in
+     * the bottle, lees ageing, riddling, disgorging and the dosage. The chosen
+     * dosage is read at the end, so it can still be changed while it runs.
+     */
+    private void tickSparkling() {
+        if (stage != 3) return;
+        if (batch == null) {
+            stage = 0;
+            active = false;
+            progress = 0;
+            return;
+        }
+        if (duration <= 0) duration = SPARKLING_TICKS;
+        active = true;
+        progress++;
+        if (progress < duration) return;
+        batch = Wine.tirage(batch, Wine.Dosage.byIndex(dosage));
+        stage = 4;
+        active = false;
+        progress = duration;
+        setChanged();
+        burst(ParticleTypes.BUBBLE_POP, 22, 0.3, 0.02);
+        level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME,
+                SoundSource.BLOCKS, 0.5f, 1.7f);
     }
 
     private void updateTemperature() {
@@ -1418,6 +1786,16 @@ public final class ProcessBlockEntity extends BlockEntity {
                     1, 0.3, 0.05, 0.3, 0.015);
             case AGING -> server.sendParticles(ParticleTypes.FALLING_HONEY, x, y + 0.9, z,
                     1, 0.2, 0.02, 0.2, 0.0);
+            case PRESSING -> server.sendParticles(ParticleTypes.DRIPPING_HONEY, x, y + 0.7, z,
+                    1, 0.2, 0.05, 0.2, 0.01);
+            case SPARKLING -> {
+                server.sendParticles(ParticleTypes.BUBBLE_POP, x, y + 0.9, z,
+                        1, 0.3, 0.05, 0.3, 0.005);
+                if (progress > duration / 2) {
+                    server.sendParticles(ParticleTypes.BUBBLE, x, y + 0.6, z,
+                            1, 0.2, 0.05, 0.2, 0.01);
+                }
+            }
             case TASTING -> {
             }
         }
@@ -1461,6 +1839,8 @@ public final class ProcessBlockEntity extends BlockEntity {
             case BLENDING -> useBlending(player, hand, stack);
             case DILUTION -> useDilution(player, hand, stack);
             case AGING -> useAging(player, hand, stack);
+            case PRESSING -> usePressing(player, hand, stack);
+            case SPARKLING -> useSparkling(player, hand, stack);
             case TASTING -> useTasting(player, hand, stack);
         };
         setChanged();
@@ -1560,7 +1940,9 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (stage == 2) {
             return InteractionResult.SUCCESS;
         }
-        return bottleJar(player, stack, ModItems.FERMENTED_MASH.get());
+        // Stage 3 is a finished barrel: grape must has become wine and has to
+        // leave in a wine bottle, not under the mash item.
+        return bottleJar(player, stack, outputItem());
     }
 
     /**
@@ -1839,7 +2221,8 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (!stack.is(beer ? ModItems.WOODEN_MUG.get() : Items.GLASS_BOTTLE)) {
             return InteractionResult.SUCCESS;
         }
-        Batch portion = takePortion(beer ? MUG : BOTTLE);
+        Batch portion = takePortion(beer ? MUG
+                : Wine.isWine(batch) ? Wine.BOTTLE_VOLUME : BOTTLE);
         consume(player, stack, null);
         giveOrDrop(player, BatchData.create(item, portion));
         level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 0.7f, 1.0f);
@@ -1915,7 +2298,110 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (stage == 3) {
             return InteractionResult.SUCCESS;
         }
-        return bottleSmall(player, stack, ModItems.OAK_AGED_SPIRIT.get());
+        return Wine.isWine(batch)
+                ? bottleWine(player, stack, ModItems.WINE.get())
+                : bottleSmall(player, stack, ModItems.OAK_AGED_SPIRIT.get());
+    }
+
+    /**
+     * Must colour of a charged grape: a white grape always gives white must, a
+     * red grape gives red while the skins stay in contact and rosé without.
+     */
+    private static Wine.Color mustColor(GrapeVariety variety, boolean skinContact) {
+        if (variety.color() != Wine.Color.RED) return Wine.Color.WHITE;
+        return skinContact ? Wine.Color.RED : Wine.Color.ROSE;
+    }
+
+    /**
+     * The wine press. Grapes are charged by hand; the skins stay in contact for
+     * a red maceration and are pressed straight off for rosé. Finished must is
+     * drawn off into a glass bottle like the sweet wort of the mash tun.
+     */
+    private InteractionResult usePressing(Player player, InteractionHand hand, ItemStack stack) {
+        if (stage == 0) {
+            GrapeVariety variety = ModItems.varietyOf(stack);
+            if (variety == null) {
+                return InteractionResult.SUCCESS;
+            }
+            consume(player, stack, null);
+            batch = Wine.must(mustColor(variety, skinContact), variety);
+            stage = 3;
+            progress = 0;
+            duration = PRESS_TICKS;
+            settle = 0;
+            return InteractionResult.SUCCESS;
+        }
+        if (stage == 3) {
+            return InteractionResult.SUCCESS;
+        }
+        return bottleJar(player, stack, ModItems.GRAPE_MUST.get());
+    }
+
+    /**
+     * The riddling rack. A dry still wine is charged into the input, sugar for
+     * the tirage and the dosage goes into the additive slot, and the rack hands
+     * back a sparkling wine after the second fermentation in the bottle.
+     */
+    private InteractionResult useSparkling(Player player, InteractionHand hand, ItemStack stack) {
+        if (stage == 0) {
+            if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
+                Batch wine = BatchData.read(stack);
+                if (!Wine.isStillWine(wine)) {
+                    return InteractionResult.SUCCESS;
+                }
+                batch = wine;
+                stage = 1;
+                progress = 0;
+                duration = 0;
+                settle = 0;
+                consume(player, stack, inputContainer(stack));
+                return InteractionResult.SUCCESS;
+            }
+            return InteractionResult.SUCCESS;
+        }
+        if (stage == 1) {
+            if (batch == null) {
+                stage = 0;
+                progress = 0;
+                return InteractionResult.SUCCESS;
+            }
+            if (stack.is(Items.SUGAR)) {
+                int cost = Wine.Dosage.byIndex(dosage).sugarItems();
+                if (stack.getCount() < cost && !player.getAbilities().instabuild) {
+                    player.displayClientMessage(
+                            Component.translatable("message.samogon.sparkling.sugar", cost), true);
+                    return InteractionResult.SUCCESS;
+                }
+                for (int i = 0; i < cost; i++) {
+                    consume(player, stack, null);
+                }
+                stage = 3;
+                progress = 0;
+                duration = SPARKLING_TICKS;
+                deviationSum = 0;
+                deviationSamples = 0;
+                ambientSum = 0;
+                ambientSamples = 0;
+                return InteractionResult.SUCCESS;
+            }
+            return InteractionResult.SUCCESS;
+        }
+        if (stage == 3) {
+            return InteractionResult.SUCCESS;
+        }
+        return bottleWine(player, stack, ModItems.SPARKLING_WINE.get());
+    }
+
+    /** Fills one wine bottle (750 units) of the current batch by hand. */
+    private InteractionResult bottleWine(Player player, ItemStack stack, Item item) {
+        if (!stack.is(Items.GLASS_BOTTLE) || batch == null) {
+            return InteractionResult.SUCCESS;
+        }
+        Batch portion = takePortion(Wine.BOTTLE_VOLUME);
+        consume(player, stack, null);
+        giveOrDrop(player, BatchData.create(item, portion));
+        level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 0.7f, 1.0f);
+        return InteractionResult.SUCCESS;
     }
 
     /**
@@ -2037,7 +2523,9 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (batch == null) {
             return InteractionResult.SUCCESS;
         }
-        Batch portion = takePortion(JAR);
+        // Draw the same volume the machine's own output slot would, so a
+        // hand-bottled wine is a 750 ml bottle rather than a litre of mash.
+        Batch portion = takePortion(outputVolume());
         consume(player, stack, null);
         giveOrDrop(player, BatchData.create(item, portion));
         level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 0.7f, 0.9f);
@@ -2172,9 +2660,15 @@ public final class ProcessBlockEntity extends BlockEntity {
         tag.putBoolean("Fractional", fractional);
         tag.putInt("ColumnRunsTarget", columnRunsTarget);
         tag.putInt("ColumnRunsLeft", columnRunsLeft);
+        tag.putBoolean("PressSkinContact", skinContact);
+        tag.putInt("SparklingDosage", dosage);
         tag.putInt("InventoryLayout", INVENTORY_LAYOUT);
         ContainerHelper.saveAllItems(tag, inventory.getItems(), registries);
         if (batch != null) tag.put("Batch", BatchNbt.save(batch));
+        if (fortifyBatch != null) tag.put("Fortify", BatchNbt.save(fortifyBatch));
+        if (fortifyItem != null) {
+            tag.putString("FortifyItem", BuiltInRegistries.ITEM.getKey(fortifyItem).toString());
+        }
         if (still != null) {
             CompoundTag stillTag = new CompoundTag();
             StillNbt.save(still, stillTag);
@@ -2206,6 +2700,10 @@ public final class ProcessBlockEntity extends BlockEntity {
         fractional = !tag.contains("Fractional") || tag.getBoolean("Fractional");
         columnRunsTarget = tag.contains("ColumnRunsTarget") ? tag.getInt("ColumnRunsTarget") : 1;
         columnRunsLeft = tag.getInt("ColumnRunsLeft");
+        skinContact = tag.getBoolean("PressSkinContact");
+        dosage = tag.contains("SparklingDosage")
+                ? Math.floorMod(tag.getInt("SparklingDosage"), Wine.Dosage.values().length)
+                : Wine.Dosage.BRUT.ordinal();
         boolean legacyInventory = tag.getInt("InventoryLayout") < INVENTORY_LAYOUT;
         ContainerHelper.loadAllItems(tag, inventory.getItems(), registries);
         if (legacyInventory) {
@@ -2218,6 +2716,15 @@ public final class ProcessBlockEntity extends BlockEntity {
             }
         }
         batch = tag.contains("Batch") ? BatchNbt.load(tag.getCompound("Batch")) : null;
+        fortifyBatch = tag.contains("Fortify") ? BatchNbt.load(tag.getCompound("Fortify")) : null;
+        fortifyItem = null;
+        if (tag.contains("FortifyItem")) {
+            ResourceLocation fortifyId = ResourceLocation.tryParse(tag.getString("FortifyItem"));
+            if (fortifyId != null) {
+                Item resolved = BuiltInRegistries.ITEM.get(fortifyId);
+                if (resolved != Items.AIR) fortifyItem = resolved;
+            }
+        }
         still = tag.contains("Still") ? StillNbt.load(tag.getCompound("Still")) : null;
         try {
             receiver = Fraction.valueOf(tag.getString("Receiver").toUpperCase(Locale.ROOT));

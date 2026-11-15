@@ -48,6 +48,10 @@
           "name": "samogon:hops_seeds",
           "functions": [
             {
+              "function": "minecraft:set_count",
+              "count": 2.0
+            },
+            {
               "function": "minecraft:apply_bonus",
               "enchantment": "minecraft:fortune",
               "formula": "minecraft:binomial_with_bonus_count",

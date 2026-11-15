@@ -97,13 +97,63 @@
               "condition": "minecraft:survives_explosion"
             },
             {
-              "chance": 0.05,
+              "chance": 0.2,
               "condition": "minecraft:random_chance"
             }
           ]
         }
       ],
       "rolls": 1.0
+    },
+    {
+      "bonus_rolls": 0.0,
+      "rolls": 1.0,
+      "conditions": [
+        {
+          "block": "minecraft:large_fern",
+          "condition": "minecraft:block_state_property",
+          "properties": {
+            "half": "lower"
+          }
+        },
+        {
+          "condition": "minecraft:location_check",
+          "offsetY": 1,
+          "predicate": {
+            "block": {
+              "blocks": "minecraft:large_fern",
+              "state": {
+                "half": "upper"
+              }
+            }
+          }
+        },
+        {
+          "condition": "minecraft:survives_explosion"
+        },
+        {
+          "chance": 0.1,
+          "condition": "minecraft:random_chance"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "samogon:cabernet_seeds"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "samogon:merlot_seeds"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "samogon:chardonnay_seeds"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "samogon:riesling_seeds"
+        }
+      ]
     },
     {
       "bonus_rolls": 0.0,
@@ -201,13 +251,63 @@
               "condition": "minecraft:survives_explosion"
             },
             {
-              "chance": 0.05,
+              "chance": 0.2,
               "condition": "minecraft:random_chance"
             }
           ]
         }
       ],
       "rolls": 1.0
+    },
+    {
+      "bonus_rolls": 0.0,
+      "rolls": 1.0,
+      "conditions": [
+        {
+          "block": "minecraft:large_fern",
+          "condition": "minecraft:block_state_property",
+          "properties": {
+            "half": "upper"
+          }
+        },
+        {
+          "condition": "minecraft:location_check",
+          "offsetY": -1,
+          "predicate": {
+            "block": {
+              "blocks": "minecraft:large_fern",
+              "state": {
+                "half": "lower"
+              }
+            }
+          }
+        },
+        {
+          "condition": "minecraft:survives_explosion"
+        },
+        {
+          "chance": 0.1,
+          "condition": "minecraft:random_chance"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "samogon:cabernet_seeds"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "samogon:merlot_seeds"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "samogon:chardonnay_seeds"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "samogon:riesling_seeds"
+        }
+      ]
     }
   ],
   "random_sequence": "minecraft:blocks/large_fern"

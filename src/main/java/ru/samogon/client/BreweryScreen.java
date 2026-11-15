@@ -110,15 +110,16 @@ public final class BreweryScreen extends AbstractContainerScreen<BreweryMenu> {
         graphics.renderItem(ModBlocks.BREWERY_ITEM.get().getDefaultInstance(), x + 24, y + 18);
         graphics.drawString(font, title.copy().withStyle(ChatFormatting.BOLD), x + 52, y + 15, INK, false);
 
-        // The stage reminder sits on the title line, to the right of the name,
-        // clear of the rule line baked into the page.
+        // The stage reminder sits under the title, to the left of the tab strip:
+        // the title line has no room for it once the name is drawn, and anything
+        // wider than that gap used to run underneath the tab buttons.
         String hintKey = switch (menu.data(BreweryData.TAB)) {
             case 1 -> "gui.samogon.brewery.hint.heat";
             default -> null;
         };
         if (hintKey != null) {
-            graphics.drawString(font, Component.translatable(hintKey),
-                    x + 52 + font.width(title) + 14, y + 15, COPPER_DARK, false);
+            drawHeaderHint(graphics, x + 52, y + 26, TAB_X - 52 - 8,
+                    Component.translatable(hintKey));
         }
 
         drawState(graphics, x + 16, y + 42);
@@ -148,6 +149,24 @@ public final class BreweryScreen extends AbstractContainerScreen<BreweryMenu> {
                 break;
             }
         }
+    }
+
+    /**
+     * A one-line note in the header. The only free space there is the gap
+     * between the seal and the tab strip, so a translation that still does not
+     * fit is shortened with an ellipsis rather than drawn under the buttons;
+     * the full wording stays on the tab tooltip.
+     */
+    private void drawHeaderHint(GuiGraphics graphics, int x, int y, int maxWidth, Component text) {
+        if (font.width(text) <= maxWidth) {
+            graphics.drawString(font, text, x, y, COPPER_DARK, false);
+            return;
+        }
+        String dots = "\u2026";
+        String fitted = font.plainSubstrByWidth(text.getString(), maxWidth - font.width(dots));
+        int space = fitted.lastIndexOf(' ');
+        if (space > 0) fitted = fitted.substring(0, space);
+        graphics.drawString(font, fitted.stripTrailing() + dots, x, y, COPPER_DARK, false);
     }
 
     private void drawState(GuiGraphics graphics, int x, int y) {

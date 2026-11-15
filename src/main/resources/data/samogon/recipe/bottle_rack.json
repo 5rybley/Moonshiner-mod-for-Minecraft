@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["ABA","ACA","ABA"],"key":{"A":{"item":"minecraft:oak_planks"},"B":{"item":"minecraft:glass"},"C":{"item":"minecraft:iron_nugget"}},"result":{"id":"samogon:bottle_rack","count":1}}

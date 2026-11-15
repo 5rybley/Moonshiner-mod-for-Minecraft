@@ -15,10 +15,12 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import ru.samogon.SamogonMod;
 import ru.samogon.block.AgingBarrelBlock;
 import ru.samogon.block.AgingBarrelBlockEntity;
+import ru.samogon.block.BottleRackBlock;
 import ru.samogon.block.BreweryBlock;
 import ru.samogon.block.BreweryBlockEntity;
 import ru.samogon.block.CondenserBlock;
 import ru.samogon.block.CondenserBlockEntity;
+import ru.samogon.block.GrapeVineBlock;
 import ru.samogon.block.HopsCropBlock;
 import ru.samogon.block.PlacedDrinkBlock;
 import ru.samogon.block.PlacedDrinkBlockEntity;
@@ -56,6 +58,24 @@ public final class ModBlocks {
      */
     public static final DeferredBlock<Block> BEER_FERMENTATION_BARREL =
             machine("beer_fermentation_barrel", ProcessBlock.Kind.BEER_FERMENTATION);
+    /** The wine press: grapes in, grape must out; skin contact decides red or rosé. */
+    public static final DeferredBlock<Block> WINE_PRESS =
+            machine("wine_press", ProcessBlock.Kind.PRESSING);
+    /**
+     * The riddling rack: bottle fermentation, lees ageing, disgorging and
+     * dosage. A 1 wide x 2 tall x 2 deep shelf; the placed block is the master
+     * and builds the three remaining parts, like the brewery.
+     */
+    public static final DeferredBlock<Block> BOTTLE_RACK = BLOCKS.register("bottle_rack",
+            () -> new BottleRackBlock(machineProperties(), ProcessBlock.Kind.SPARKLING));
+
+    static {
+        // The rack shares the machines' block entity, so it joins their type.
+        MACHINES.add(BOTTLE_RACK);
+    }
+
+    public static final DeferredItem<Item> BOTTLE_RACK_ITEM = BLOCK_ITEMS.register("bottle_rack",
+            () -> new MachineItem(BOTTLE_RACK.get(), new Item.Properties()));
     public static final DeferredBlock<Block> CONDENSER = BLOCKS.register("condenser",
             () -> new CondenserBlock(BlockBehaviour.Properties.of()
                     .strength(2.5f).sound(SoundType.COPPER).noOcclusion()));
@@ -67,6 +87,14 @@ public final class ModBlocks {
      */
     public static final DeferredBlock<Block> HOPS = BLOCKS.register("hops",
             () -> new HopsCropBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.WHEAT)));
+    /**
+     * The grape vine. Like the hop crop it has no block item: seeds plant it,
+     * and the harvested grapes and the seeds are ordinary items. The single
+     * block carries a variety property and a trellis model about as tall as a
+     * player.
+     */
+    public static final DeferredBlock<Block> GRAPE_VINE = BLOCKS.register("grape_vine",
+            () -> new GrapeVineBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.WHEAT)));
     public static final DeferredBlock<Block> SAMOGON_CRATE = BLOCKS.register("samogon_crate",
             () -> new SamogonCrateBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).noOcclusion()));
     public static final DeferredItem<Item> SAMOGON_CRATE_ITEM = BLOCK_ITEMS.register("samogon_crate",
@@ -122,19 +150,27 @@ public final class ModBlocks {
                     BreweryBlockEntity::new, BREWERY.get()).build(null));
 
     private static DeferredBlock<Block> machine(String id, ProcessBlock.Kind kind) {
-        DeferredBlock<Block> block = BLOCKS.register(id, () -> new ProcessBlock(
-                BlockBehaviour.Properties.ofFullCopy(Blocks.COPPER_BLOCK)
-                        .strength(2.5f)
-                        .sound(SoundType.COPPER)
-                        .lightLevel(state -> Math.max(
-                                state.getValue(ProcessBlock.HEAT) * 2,
-                                state.getValue(ProcessBlock.READY) ? 11
-                                        : state.getValue(ProcessBlock.ACTIVE)
-                                        ? 3 + state.getValue(ProcessBlock.PROGRESS) : 0))
-                        .noOcclusion(), kind));
+        DeferredBlock<Block> block = BLOCKS.register(id, () -> new ProcessBlock(machineProperties(), kind));
         MACHINES.add(block);
         BLOCK_ITEMS.register(id, () -> new MachineItem(block.get(), new Item.Properties()));
         return block;
+    }
+
+    /**
+     * Shared behaviour of every machine block: copper strength and sound, a
+     * light that follows the heat and the progress band, and no occlusion so
+     * the models read correctly. The bottle rack reuses it verbatim.
+     */
+    private static BlockBehaviour.Properties machineProperties() {
+        return BlockBehaviour.Properties.ofFullCopy(Blocks.COPPER_BLOCK)
+                .strength(2.5f)
+                .sound(SoundType.COPPER)
+                .lightLevel(state -> Math.max(
+                        state.getValue(ProcessBlock.HEAT) * 2,
+                        state.getValue(ProcessBlock.READY) ? 11
+                                : state.getValue(ProcessBlock.ACTIVE)
+                                ? 3 + state.getValue(ProcessBlock.PROGRESS) : 0))
+                .noOcclusion();
     }
 
     private ModBlocks() {}

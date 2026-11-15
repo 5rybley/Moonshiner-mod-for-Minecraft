@@ -29,14 +29,14 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import ru.samogon.registry.ModBlocks;
 
-public final class ProcessBlock extends Block implements EntityBlock {
+public final class ProcessBlock extends Block implements EntityBlock, ProcessMachine {
     /**
      * New kinds must be appended: the kind is synced to the client as its
      * ordinal, so inserting one would reinterpret existing machines.
      * {@code BEER_FERMENTATION} is the standalone one-block barrel that turns
      * hopped wort and yeast into beer, separate from the brewery multiblock.
      */
-    public enum Kind { MASHING, FERMENTATION, DISTILLER, RECTIFIER, FILTER, BLENDING, DILUTION, AGING, TASTING, BEER_FERMENTATION }
+    public enum Kind { MASHING, FERMENTATION, DISTILLER, RECTIFIER, FILTER, BLENDING, DILUTION, AGING, TASTING, BEER_FERMENTATION, PRESSING, SPARKLING }
 
     public static final IntegerProperty HEAT = IntegerProperty.create("heat", 0, 4);
     public static final BooleanProperty ACTIVE = BooleanProperty.create("active");
@@ -301,6 +301,36 @@ public final class ProcessBlock extends Block implements EntityBlock {
             case TASTING -> {
                 // The tasting table has no process to animate: it only reads
                 // the bottle and the hydrometer that sit on it.
+            }
+            case PRESSING -> {
+                int rate = Math.max(4, 18 - progress * 3);
+                if (random.nextInt(rate) == 0) {
+                    level.addParticle(ParticleTypes.DRIPPING_HONEY, x + spread(random, 0.22),
+                            pos.getY() + 0.72, z + spread(random, 0.22), 0, -0.02, 0);
+                }
+                if (random.nextInt(28) == 0) {
+                    level.addParticle(ParticleTypes.SPLASH, x + 0.32, pos.getY() + 0.42,
+                            z + 0.28, 0, 0.01, 0);
+                }
+                if (random.nextInt(110) == 0) {
+                    level.playLocalSound(x, y, z, SoundEvents.BUCKET_EMPTY, SoundSource.BLOCKS,
+                            0.16f, 1.25f, false);
+                }
+            }
+            case SPARKLING -> {
+                int rate = Math.max(3, 16 - progress * 2);
+                if (random.nextInt(rate) == 0) {
+                    level.addParticle(ParticleTypes.BUBBLE_POP, x + spread(random, 0.3),
+                            pos.getY() + 0.9, z + spread(random, 0.3), 0, 0.01, 0);
+                }
+                if (progress >= 2 && random.nextInt(14) == 0) {
+                    level.addParticle(ParticleTypes.BUBBLE, x + spread(random, 0.2),
+                            pos.getY() + 0.65, z + spread(random, 0.2), 0, 0.02, 0);
+                }
+                if (random.nextInt(150) == 0) {
+                    level.playLocalSound(x, y + 0.8, z, SoundEvents.AMETHYST_BLOCK_CHIME,
+                            SoundSource.BLOCKS, 0.14f, 1.9f, false);
+                }
             }
         }
     }

@@ -1,0 +1,20 @@
+{
+  "multipart": [
+    {"when": {"facing": "south", "part": "0"}, "apply": {"model": "samogon:block/bottle_rack_0"}},
+    {"when": {"facing": "south", "part": "1"}, "apply": {"model": "samogon:block/bottle_rack_1"}},
+    {"when": {"facing": "south", "part": "2"}, "apply": {"model": "samogon:block/bottle_rack_2"}},
+    {"when": {"facing": "south", "part": "3"}, "apply": {"model": "samogon:block/bottle_rack_3"}},
+    {"when": {"facing": "west", "part": "0"}, "apply": {"model": "samogon:block/bottle_rack_0", "y": 90}},
+    {"when": {"facing": "west", "part": "1"}, "apply": {"model": "samogon:block/bottle_rack_1", "y": 90}},
+    {"when": {"facing": "west", "part": "2"}, "apply": {"model": "samogon:block/bottle_rack_2", "y": 90}},
+    {"when": {"facing": "west", "part": "3"}, "apply": {"model": "samogon:block/bottle_rack_3", "y": 90}},
+    {"when": {"facing": "north", "part": "0"}, "apply": {"model": "samogon:block/bottle_rack_0", "y": 180}},
+    {"when": {"facing": "north", "part": "1"}, "apply": {"model": "samogon:block/bottle_rack_1", "y": 180}},
+    {"when": {"facing": "north", "part": "2"}, "apply": {"model": "samogon:block/bottle_rack_2", "y": 180}},
+    {"when": {"facing": "north", "part": "3"}, "apply": {"model": "samogon:block/bottle_rack_3", "y": 180}},
+    {"when": {"facing": "east", "part": "0"}, "apply": {"model": "samogon:block/bottle_rack_0", "y": 270}},
+    {"when": {"facing": "east", "part": "1"}, "apply": {"model": "samogon:block/bottle_rack_1", "y": 270}},
+    {"when": {"facing": "east", "part": "2"}, "apply": {"model": "samogon:block/bottle_rack_2", "y": 270}},
+    {"when": {"facing": "east", "part": "3"}, "apply": {"model": "samogon:block/bottle_rack_3", "y": 270}}
+  ]
+}

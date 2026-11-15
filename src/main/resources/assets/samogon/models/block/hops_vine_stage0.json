@@ -1,0 +1,138 @@
+{
+	"format_version": "26.3",
+	"credit": "Draft hop vine: trellis and winding bine by tools/GenerateHopsVine.java; existing hop plant elements copied verbatim from hops_stage0.json",
+	"parent": "minecraft:block/block",
+	"ambientocclusion": false,
+	"textures": {
+		"particle": "samogon:block/materials/herb",
+		"herb": "samogon:block/materials/herb",
+		"green": "samogon:block/materials/green",
+		"red": "samogon:block/materials/red"
+	},
+	"elements": [
+		{
+			"from": [2, 0, 7.3],
+			"to": [3, 29, 8.7],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#red"}
+			}
+		},
+		{
+			"from": [13, 0, 7.3],
+			"to": [14, 29, 8.7],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#red"}
+			}
+		},
+		{
+			"from": [1.6, -0.5, 6.9],
+			"to": [3.4, 1.2, 9.1],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#red"}
+			}
+		},
+		{
+			"from": [12.6, -0.5, 6.9],
+			"to": [14.4, 1.2, 9.1],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#red"}
+			}
+		},
+		{
+			"from": [1.75, 27.6, 7.4],
+			"to": [14.25, 28.75, 8.6],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#red"}
+			}
+		},
+		{
+			"from": [2.25, 14.2, 7.7],
+			"to": [13.75, 14.9, 8.3],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#red"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#red"}
+			}
+		},
+		{
+			"from": [3.3, -1, 6.05],
+			"to": [4.7, 2.538, 7.45],
+			"rotation": {"angle": 0, "axis": "y", "origin": [-4, 0, -1.25]},
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#green"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#green"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#green"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#green"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#green"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#green"}
+			}
+		},
+		{
+			"from": [0.8, 1.938, 5.2],
+			"to": [3.3, 2.938, 6.8],
+			"rotation": {"angle": 0, "axis": "y", "origin": [-4, 0, -2]},
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#herb"}
+			}
+		},
+		{
+			"from": [4.7, 2.338, 6.45],
+			"to": [7.2, 3.338, 8.05],
+			"rotation": {"angle": 0, "axis": "y", "origin": [-4, 0, -0.75]},
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#herb"}
+			}
+		},
+		{
+			"from": [3.6, 2.538, 6.35],
+			"to": [4.4, 3.938, 7.15],
+			"rotation": {"angle": 0, "axis": "y", "origin": [-4, 0, -1.25]},
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#herb"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#herb"}
+			}
+		}
+	]
+}

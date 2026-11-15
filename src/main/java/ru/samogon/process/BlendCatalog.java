@@ -174,6 +174,16 @@ public final class BlendCatalog {
     }
 
     /**
+     * The still-wine style a blend composition creates. Wine is treated by the
+     * blending table as an aromatization base: botanicals make vermouth, spices
+     * mull the wine, fruit and berries make sangria and honey sweetens it. Any
+     * other family leaves the wine dry and only adds its composition.
+     */
+    public static WineStyle wineAroma(String composition) {
+        return WineStyle.forComposition(composition);
+    }
+
+    /**
      * A stable, composition-derived name. The adjective follows the dominant
      * family and the noun is chosen from the full sorted composition, giving
      * hundreds of distinct names without registering hundreds of items.

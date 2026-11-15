@@ -3,14 +3,18 @@ package ru.samogon.registry;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemNameBlockItem;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import ru.samogon.SamogonMod;
 import ru.samogon.item.BatchItem;
 import ru.samogon.item.BrineItem;
+import ru.samogon.item.GrapeSeedItem;
 import ru.samogon.item.GuideItem;
 import ru.samogon.item.HydrometerItem;
 import ru.samogon.process.Brewing;
+import ru.samogon.process.GrapeVariety;
+import ru.samogon.process.Wine;
 
 public final class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(SamogonMod.MOD_ID);
@@ -25,7 +29,8 @@ public final class ModItems {
     public static final DeferredItem<Item> OAK_CHIPS = simple("oak_chips");
     public static final DeferredItem<Item> MOLECULAR_SIEVE = simple("molecular_sieve");
     /** Hops: the bittering and aromatic charge of the brewery boil. */
-    public static final DeferredItem<Item> HOPS = simple("hops");
+    public static final DeferredItem<Item> HOPS = ITEMS.registerSimpleItem("hops",
+            new Item.Properties().stacksTo(64));
     /** Hop seeds: plant on farmland to grow the hop bine, or find them in ferns. */
     public static final DeferredItem<Item> HOPS_SEEDS = ITEMS.registerItem("hops_seeds",
             props -> new ItemNameBlockItem(ModBlocks.HOPS.get(), props), new Item.Properties());
@@ -36,6 +41,9 @@ public final class ModItems {
             new Item.Properties().stacksTo(1));
     /** The brewer's handbook: the same illustrated book, but for the brewery. */
     public static final DeferredItem<GuideItem> BREWERS_GUIDE = ITEMS.registerItem("brewers_guide", GuideItem::new,
+            new Item.Properties().stacksTo(1));
+    /** The winemaker's handbook: the same illustrated book, but for the winery. */
+    public static final DeferredItem<GuideItem> WINEMAKERS_GUIDE = ITEMS.registerItem("winemakers_guide", GuideItem::new,
             new Item.Properties().stacksTo(1));
     public static final DeferredItem<BatchItem> SWEET_WORT = batch("sweet_wort", 0, false, 1000);
     public static final DeferredItem<BatchItem> FERMENTED_MASH = batch("fermented_mash", 12, true, 1000);
@@ -78,6 +86,84 @@ public final class ModItems {
             ITEMS.registerItem("beer", props -> new BatchItem(props, Brewing.BEER_ABV, true, 500)
                     .withContainer(WOODEN_MUG::get), new Item.Properties().stacksTo(1));
 
+    // Winery chain. Four grape varieties are grown in the vineyard; the press
+    // turns them into must, the barrel ferments the must and the bottle rack
+    // makes sparkling wine.
+    /** Cabernet: warm-climate red, the must macerates into a full-bodied wine. */
+    public static final DeferredItem<Item> CABERNET_GRAPES = grapes("cabernet_grapes");
+    /** Merlot: softer red that ferments a little cooler. */
+    public static final DeferredItem<Item> MERLOT_GRAPES = grapes("merlot_grapes");
+    /** Chardonnay: cool-climate white, pressed straight into crisp must. */
+    public static final DeferredItem<Item> CHARDONNAY_GRAPES = grapes("chardonnay_grapes");
+    /** Riesling: the coolest white, light and high in acid. */
+    public static final DeferredItem<Item> RIESLING_GRAPES = grapes("riesling_grapes");
+    /** One seed per variety: plant on farmland to grow the matching vine. */
+    public static final DeferredItem<Item> CABERNET_SEEDS = seeds(GrapeVariety.CABERNET);
+    public static final DeferredItem<Item> MERLOT_SEEDS = seeds(GrapeVariety.MERLOT);
+    public static final DeferredItem<Item> CHARDONNAY_SEEDS = seeds(GrapeVariety.CHARDONNAY);
+    public static final DeferredItem<Item> RIESLING_SEEDS = seeds(GrapeVariety.RIESLING);
+    /**
+     * Legacy colour-only grapes from before the vineyard. They are hidden from
+     * the creative tab but still charge the press as the default variety of
+     * their colour, so old worlds and old guide links keep working.
+     */
+    public static final DeferredItem<Item> RED_GRAPES = grapes("red_grapes");
+    /** Legacy white grapes, pressed as Chardonnay. */
+    public static final DeferredItem<Item> WHITE_GRAPES = grapes("white_grapes");
+    /** Fresh grape must, the charge of the fermentation barrel. */
+    public static final DeferredItem<BatchItem> GRAPE_MUST =
+            batch("grape_must", 0, false, Wine.MUST_VOLUME);
+    /** Dry still wine, bottled by the press, the barrel or the aging cask. */
+    public static final DeferredItem<BatchItem> WINE =
+            batch("wine", Wine.Color.RED.baseAbv(), true, Wine.BOTTLE_VOLUME);
+    /** Sparkling wine after the second fermentation and dosage. */
+    public static final DeferredItem<BatchItem> SPARKLING_WINE =
+            batch("sparkling_wine", Wine.Color.WHITE.baseAbv() + 1.0, true, Wine.BOTTLE_VOLUME);
+
+    private static DeferredItem<Item> grapes(String id) {
+        return ITEMS.registerSimpleItem(id, new Item.Properties().stacksTo(64));
+    }
+
+    private static DeferredItem<Item> seeds(GrapeVariety variety) {
+        return ITEMS.registerItem(variety.id() + "_seeds",
+                props -> new GrapeSeedItem(ModBlocks.GRAPE_VINE.get(), props, variety),
+                new Item.Properties());
+    }
+
+    /** Grape the stack is, or null when it is not a bunch of grapes. */
+    public static GrapeVariety varietyOf(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return null;
+        if (stack.is(CABERNET_GRAPES.get()) || stack.is(RED_GRAPES.get())) return GrapeVariety.CABERNET;
+        if (stack.is(MERLOT_GRAPES.get())) return GrapeVariety.MERLOT;
+        if (stack.is(CHARDONNAY_GRAPES.get()) || stack.is(WHITE_GRAPES.get())) return GrapeVariety.CHARDONNAY;
+        if (stack.is(RIESLING_GRAPES.get())) return GrapeVariety.RIESLING;
+        return null;
+    }
+
+    public static boolean isGrapes(ItemStack stack) {
+        return varietyOf(stack) != null;
+    }
+
+    /** The item a full vine of this variety drops. */
+    public static Item grapeItem(GrapeVariety variety) {
+        return switch (variety) {
+            case CABERNET -> CABERNET_GRAPES.get();
+            case MERLOT -> MERLOT_GRAPES.get();
+            case CHARDONNAY -> CHARDONNAY_GRAPES.get();
+            case RIESLING -> RIESLING_GRAPES.get();
+        };
+    }
+
+    /** The seed that plants this variety's vine. */
+    public static Item seedFor(GrapeVariety variety) {
+        return switch (variety) {
+            case CABERNET -> CABERNET_SEEDS.get();
+            case MERLOT -> MERLOT_SEEDS.get();
+            case CHARDONNAY -> CHARDONNAY_SEEDS.get();
+            case RIESLING -> RIESLING_SEEDS.get();
+        };
+    }
+
     private static DeferredItem<Item> simple(String id) {
         return ITEMS.registerSimpleItem(id, new Item.Properties().stacksTo(16));
     }
@@ -105,9 +191,14 @@ public final class ModItems {
     public static void addToTab(CreativeModeTab.Output output) {
         output.accept(GUIDE.get());
         output.accept(BREWERS_GUIDE.get());
+        output.accept(WINEMAKERS_GUIDE.get());
         ModBlocks.BLOCK_ITEMS.getEntries().forEach(item -> output.accept(item.get()));
+        // The legacy colour-only grapes stay registered for old worlds but are
+        // hidden from the creative tab: the vineyard's four varieties replace
+        // them, and their seeds are the way to get grapes now.
         ITEMS.getEntries().stream()
-                .filter(item -> item != GUIDE && item != BREWERS_GUIDE)
+                .filter(item -> item != GUIDE && item != BREWERS_GUIDE && item != WINEMAKERS_GUIDE
+                        && item != RED_GRAPES && item != WHITE_GRAPES)
                 .forEach(item -> output.accept(item.get()));
     }
 

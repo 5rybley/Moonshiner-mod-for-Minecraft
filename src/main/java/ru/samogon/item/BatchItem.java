@@ -27,8 +27,12 @@ import ru.samogon.block.PlacedDrinkBlockEntity;
 import ru.samogon.effect.Intoxication;
 import ru.samogon.process.BeerStyle;
 import ru.samogon.process.BlendCatalog;
+import ru.samogon.process.GrapeVariety;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.process.SpiritType;
+import ru.samogon.process.SparklingStyle;
+import ru.samogon.process.Wine;
+import ru.samogon.process.WineStyle;
 import ru.samogon.registry.ModBlocks;
 import ru.samogon.registry.ModItems;
 
@@ -133,12 +137,24 @@ public final class BatchItem extends Item {
         if (!technical && BatchData.has(stack)) {
             Batch batch = BatchData.read(stack);
             SpiritType type = typeOf(batch);
+            // Wine is named by colour and, when sparkling, by its dosage:
+            // "Red Wine", "White Sparkling Wine (Brut)".
+            if (type == SpiritType.WINE || type == SpiritType.SPARKLING_WINE) {
+                Component custom = stack.get(DataComponents.CUSTOM_NAME);
+                if (custom != null) return custom;
+                return wineName(batch);
+            }
             // Beer is named by its style, not by the generic "Beer" type:
             // "Wheat Beer", "Dark Beer", "Honey Beer" and so on.
             if (type == SpiritType.BEER) {
                 Component custom = stack.get(DataComponents.CUSTOM_NAME);
                 if (custom != null) return custom;
-                return Component.translatable(BeerStyle.of(batch.origin()).translationKey());
+                Component style = Component.translatable(
+                        BeerStyle.of(batch.origin()).translationKey());
+                // A brew blended at the five-slot table keeps its style but
+                // gains the composition name, so the mug tells what was added.
+                if (batch.composition().isBlank()) return style;
+                return BlendCatalog.displayName(batch.origin(), batch.composition(), style);
             }
             boolean ownTinctureName = tincture != Tincture.NONE && tincture != Tincture.OAK
                     && type != SpiritType.GIN && type != SpiritType.ABSINTHE
@@ -190,6 +206,39 @@ public final class BatchItem extends Item {
         };
     }
 
+    /**
+     * Bottle name for the winery: "Cabernet (Red)" for a still wine and
+     * "Cabernet Sparkling Wine (Brut)" for a sparkling one. The variety, the
+     * colour and the dosage all come from the origin, so an old bottle keeps
+     * its identity and a pre-vineyard batch falls back to the colour's default
+     * grape. The name is built here rather than in {@link Wine} so the winery
+     * model stays free of Minecraft types and the headless chain test can load
+     * it.
+     */
+    private static Component wineName(Batch batch) {
+        Wine.Color color = Wine.colorOf(batch.origin());
+        GrapeVariety variety = Wine.varietyOf(batch.origin(), color);
+        if (Wine.isSparkling(batch)) {
+            SparklingStyle style = Wine.sparklingStyleOf(batch.origin());
+            return Component.translatable(style.nameKey(),
+                    Component.translatable(variety.nameKey()),
+                    Component.translatable(Wine.dosageOf(batch.origin()).translationKey()));
+        }
+        WineStyle style = Wine.displayStyle(batch);
+        GrapeVariety partner = Wine.cuveePartner(batch.origin());
+        if (style == WineStyle.CUVEE && partner != null) {
+            return Component.translatable("wine.samogon.cuvee.name",
+                    Component.translatable(variety.nameKey()),
+                    Component.translatable(partner.nameKey()));
+        }
+        if (style == WineStyle.DRY) {
+            return Component.translatable("wine.samogon.still.variety",
+                    Component.translatable(variety.nameKey()),
+                    Component.translatable(color.nameKey()));
+        }
+        return Component.translatable(style.nameKey(), Component.translatable(variety.nameKey()));
+    }
+
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> lines, TooltipFlag flag) {
         Batch batch = BatchData.read(stack);
@@ -211,6 +260,31 @@ public final class BatchItem extends Item {
                     .withStyle(ChatFormatting.LIGHT_PURPLE));
             lines.add(Component.translatable(type.descriptionKey())
                     .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+        }
+        if (type == SpiritType.SPARKLING_WINE) {
+            Wine.Dosage dosage = Wine.dosageOf(batch.origin());
+            lines.add(Component.translatable("tooltip.samogon.dosage",
+                    Component.translatable(dosage.translationKey()),
+                    dosage.gramsPerLitre()).withStyle(ChatFormatting.GRAY));
+        }
+        if (type == SpiritType.WINE) {
+            WineStyle style = Wine.displayStyle(batch);
+            if (style != WineStyle.DRY) {
+                lines.add(Component.translatable("tooltip.samogon.wine.style",
+                        Component.translatable(style.titleKey())).withStyle(ChatFormatting.GRAY));
+            }
+            GrapeVariety partner = Wine.cuveePartner(batch.origin());
+            if (partner != null) {
+                lines.add(Component.translatable("tooltip.samogon.wine.cuvee",
+                        Component.translatable(Wine.varietyOf(batch.origin()).nameKey()),
+                        Component.translatable(partner.nameKey())).withStyle(ChatFormatting.GRAY));
+            }
+        } else if (type == SpiritType.SPARKLING_WINE) {
+            SparklingStyle style = Wine.sparklingStyleOf(batch.origin());
+            if (style != SparklingStyle.CLASSIC) {
+                lines.add(Component.translatable("tooltip.samogon.wine.style",
+                        Component.translatable(style.titleKey())).withStyle(ChatFormatting.GRAY));
+            }
         }
         if (!batch.composition().isBlank()) {
             lines.add(Component.translatable("tooltip.samogon.composition",

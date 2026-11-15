@@ -14,6 +14,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import ru.samogon.block.ProcessBlock;
 import ru.samogon.block.ProcessBlockEntity;
+import ru.samogon.block.ProcessMachine;
 import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
 import ru.samogon.process.BlendCatalog;
@@ -22,6 +23,7 @@ import ru.samogon.process.MachineData;
 import ru.samogon.process.Simulation;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.process.Simulation.Fraction;
+import ru.samogon.process.Wine;
 import ru.samogon.registry.ModItems;
 import ru.samogon.registry.ModMenus;
 
@@ -196,6 +198,10 @@ public final class ProcessMenu extends AbstractContainerMenu {
         // The beer barrel charges hopped wort and, once it is loaded, an
         // optional flavouring charge that is folded into the fermentation.
         if (kind == ProcessBlock.Kind.BEER_FERMENTATION && isFlavoring(stack)) return true;
+        // The wine press takes whole grapes, which are plain items, not batches.
+        if (kind == ProcessBlock.Kind.PRESSING) {
+            return ModItems.isGrapes(stack);
+        }
         if (!(stack.getItem() instanceof BatchItem)) return false;
         try {
             Batch batch = BatchData.read(stack);
@@ -208,9 +214,10 @@ public final class ProcessMenu extends AbstractContainerMenu {
                 case FILTER -> batch.abv() >= 1;
                 case BLENDING -> true;
                 case DILUTION -> batch.abv() > 40 && batch.alcohol() * 100 / 40.0 <= 4000.0 + 1.0E-9;
-                case AGING -> Simulation.canAge(batch.abv());
+                case AGING -> Wine.isWine(batch) || Simulation.canAge(batch.abv());
+                case SPARKLING -> Wine.isStillWine(batch);
                 case TASTING -> true;
-                case MASHING -> false;
+                case MASHING, PRESSING -> false;
             };
         } catch (RuntimeException ignored) {
             return false;
@@ -233,11 +240,37 @@ public final class ProcessMenu extends AbstractContainerMenu {
             case DISTILLER -> stack.is(Items.WATER_BUCKET);
             case RECTIFIER -> stack.is(ModItems.MOLECULAR_SIEVE.get());
             case FILTER -> stack.is(ModItems.ACTIVATED_CHARCOAL.get());
-            case BLENDING -> stack.is(Items.WATER_BUCKET) || BlendCatalog.find(stack) != null;
+            case BLENDING -> stack.is(Items.WATER_BUCKET) || BlendCatalog.find(stack) != null
+                    || isFortifyingSpirit(stack) || isCuveePartner(stack);
             case DILUTION -> stack.is(Items.WATER_BUCKET);
-            case AGING -> stack.is(ModItems.OAK_CHIPS.get());
+            case AGING -> stack.is(ModItems.OAK_CHIPS.get()) || stack.is(Items.SUGAR);
+            case SPARKLING -> stack.is(Items.SUGAR);
+            case PRESSING -> false;
             case TASTING -> stack.is(ModItems.HYDROMETER.get());
         };
+    }
+
+    /** A distilled bottle strong enough to fortify a still wine. */
+    private static boolean isFortifyingSpirit(ItemStack stack) {
+        if (!(stack.getItem() instanceof BatchItem)) return false;
+        try {
+            Batch batch = BatchData.read(stack);
+            return batch != null && batch.abv() >= 30 && batch.volume() >= 100
+                    && !Wine.isGrape(batch) && !Brewing.isBrew(batch);
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    /** A plain still wine the table can marry with the base into a cuvée. */
+    private static boolean isCuveePartner(ItemStack stack) {
+        if (!(stack.getItem() instanceof BatchItem)) return false;
+        try {
+            Batch batch = BatchData.read(stack);
+            return batch != null && batch.volume() >= 100 && Wine.canFortify(batch);
+        } catch (RuntimeException ignored) {
+            return false;
+        }
     }
 
     /**
@@ -260,8 +293,8 @@ public final class ProcessMenu extends AbstractContainerMenu {
     public boolean stillValid(Player player) {
         if (machine != null && machine.isRemoved()) return false;
         Level level = player.level();
-        return level.getBlockState(pos).getBlock() instanceof ProcessBlock block
-                && block.kind() == kind
+        return level.getBlockState(pos).getBlock() instanceof ProcessMachine machine
+                && machine.kind() == kind
                 && player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64.0;
     }
 
@@ -279,7 +312,20 @@ public final class ProcessMenu extends AbstractContainerMenu {
         } else {
             int targetStart = -1;
             int targetEnd = -1;
-            if (acceptsInput(kind, stack)) {
+            // A fortifying spirit is a batch, so the input slot would claim it
+            // first and the shift-click would fail whenever a wine already sat
+            // there. At the blending table the spirit is an additive, so give
+            // the additive slots priority for it. A second bottle of wine is
+            // the cuvée partner: it goes to the tray only once a base is
+            // already in the input slot, otherwise it is the base itself.
+            boolean cuveeFirst = kind == ProcessBlock.Kind.BLENDING
+                    && slots.get(SLOT_INPUT).hasItem() && isCuveePartner(stack);
+            boolean additiveFirst = kind == ProcessBlock.Kind.BLENDING
+                    && (isFortifyingSpirit(stack) || cuveeFirst);
+            if (additiveFirst && acceptsAdditive(kind, stack)) {
+                targetStart = SLOT_ADDITIVE;
+                targetEnd = SLOT_ADDITIVE_LAST + 1;
+            } else if (acceptsInput(kind, stack)) {
                 targetStart = SLOT_INPUT;
                 targetEnd = SLOT_INPUT + 1;
             } else if (acceptsAdditive(kind, stack)) {
@@ -315,6 +361,12 @@ public final class ProcessMenu extends AbstractContainerMenu {
         }
         if (kind == ProcessBlock.Kind.RECTIFIER && id == 4) {
             return machine.cycleColumnRuns();
+        }
+        if (kind == ProcessBlock.Kind.PRESSING && id == 5) {
+            return machine.cycleSkinContact();
+        }
+        if (kind == ProcessBlock.Kind.SPARKLING && id == 6) {
+            return machine.cycleDosage();
         }
         if (kind != ProcessBlock.Kind.DISTILLER) return false;
         return switch (id) {

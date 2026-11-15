@@ -57,7 +57,11 @@ public final class MachineData {
     public static final int TASTING_AURA_LEVEL = 38;
     /** Number of distinct auras the drink carries (0..5). */
     public static final int TASTING_AURA_COUNT = 39;
-    public static final int COUNT = 40;
+    /** 1 when the wine press keeps the skins in contact (red); 0 gives rosé. */
+    public static final int PRESS_SKIN_CONTACT = 40;
+    /** Selected sparkling-wine dosage, as the ordinal of {@code Wine.Dosage}. */
+    public static final int SPARKLING_DOSAGE = 41;
+    public static final int COUNT = 42;
 
     private MachineData() {}
 }

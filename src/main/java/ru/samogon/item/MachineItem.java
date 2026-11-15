@@ -6,7 +6,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.block.Block;
-import ru.samogon.block.ProcessBlock;
+import ru.samogon.block.ProcessMachine;
 
 import java.util.List;
 import java.util.Locale;
@@ -19,7 +19,7 @@ public final class MachineItem extends BlockItem {
 
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> lines, TooltipFlag flag) {
-        if (getBlock() instanceof ProcessBlock machine) {
+        if (getBlock() instanceof ProcessMachine machine) {
             String kind = machine.kind().name().toLowerCase(Locale.ROOT);
             lines.add(Component.translatable("tooltip.samogon.machine." + kind)
                     .withStyle(ChatFormatting.GRAY));

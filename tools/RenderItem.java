@@ -67,18 +67,37 @@ public final class RenderItem {
         material("yeast_label", 0x788c64);
         material("berry_label", 0x914553);
         material("seal", 0x913b36);
+        material("wine_red", 0x6e1f2f);
+        material("wine_white", 0xd9c477);
+        material("wine_rose", 0xc97f86);
+        material("must", 0xa99a4a);
+        material("grape_red", 0x6b2f52);
+        material("grape_white", 0xb9c46a);
+        material("grape_cabernet", 0x4a2470);
+        material("grape_merlot", 0xa32e44);
+        material("grape_chardonnay", 0xe0b84e);
+        material("grape_riesling", 0xc6d962);
+        material("grape_leaf_cabernet", 0x4e7a4a);
+        material("grape_leaf_merlot", 0x6f8f3e);
+        material("grape_leaf_chardonnay", 0x93ac52);
+        material("grape_leaf_riesling", 0x5e9a63);
     }
 
+    /** Captures from, to, any element rotation text between them, and the first face texture. */
     static final Pattern ELEMENT = Pattern.compile(
-            "\"from\"\\s*:\\s*\\[([^\\]]+)\\]\\s*,\\s*\"to\"\\s*:\\s*\\[([^\\]]+)\\]"
-                    + "\\s*,\\s*\"faces\"\\s*:\\s*\\{[^}]*?\"texture\"\\s*:\\s*\"#([a-z_0-9]+)\"",
+            "\"from\"\\s*:\\s*\\[([^\\]]+)\\]\\s*,\\s*\"to\"\\s*:\\s*\\[([^\\]]+)\\]\\s*,"
+                    + "\\s*(.*?)\"faces\"\\s*:\\s*\\{[^}]*?\"texture\"\\s*:\\s*\"#([a-z_0-9]+)\"",
             Pattern.DOTALL);
+    static final Pattern ROTATION = Pattern.compile(
+            "\"angle\"\\s*:\\s*(-?[0-9.]+)\\s*,\\s*\"axis\"\\s*:\\s*\"([xyz])\"\\s*,"
+                    + "\\s*\"origin\"\\s*:\\s*\\[([^\\]]+)\\]");
     static final Pattern TEXTURE = Pattern.compile(
             "\"([a-z_0-9]+)\"\\s*:\\s*\"samogon:block/materials/([a-z_0-9/]+)\"");
     static final Pattern DISPLAY_ROT = Pattern.compile(
             "\"gui\"\\s*:\\s*\\{[^}]*?\"rotation\"\\s*:\\s*\\[\\s*(-?[0-9.]+)\\s*,\\s*(-?[0-9.]+)\\s*,\\s*(-?[0-9.]+)");
 
-    record Box(double x, double y, double z, double X, double Y, double Z, String material) {}
+    record Box(double x, double y, double z, double X, double Y, double Z, String material,
+               Double angle, String axis, double ox, double oy, double oz) {}
 
     record Face(double[][] v, int rgb) {}
 
@@ -114,9 +133,22 @@ public final class RenderItem {
         for (Matcher m = ELEMENT.matcher(json); m.find(); ) {
             String[] f = m.group(1).trim().split(",");
             String[] t = m.group(2).trim().split(",");
-            String key = m.group(3);
+            String key = m.group(4);
             String material = texMap.getOrDefault(key, key);
-            boxes.add(new Box(d(f[0]), d(f[1]), d(f[2]), d(t[0]), d(t[1]), d(t[2]), material));
+            Double angle = null;
+            String axis = "y";
+            double ox = 8, oy = 8, oz = 8;
+            Matcher rotation = ROTATION.matcher(m.group(3));
+            if (rotation.find()) {
+                angle = Double.parseDouble(rotation.group(1));
+                axis = rotation.group(2);
+                String[] origin = rotation.group(3).trim().split(",");
+                ox = d(origin[0]);
+                oy = d(origin[1]);
+                oz = d(origin[2]);
+            }
+            boxes.add(new Box(d(f[0]), d(f[1]), d(f[2]), d(t[0]), d(t[1]), d(t[2]), material,
+                    angle, axis, ox, oy, oz));
         }
         if (boxes.isEmpty()) {
             System.err.println("no elements parsed from " + args[0]);
@@ -145,12 +177,7 @@ public final class RenderItem {
 
         List<Face> faces = new ArrayList<>();
         for (Box b : boxes) {
-            addFace(faces, q, b, 0, 1, 0, b.Y, b.material, 1.08);   // up
-            addFace(faces, q, b, 0, -1, 0, b.y, b.material, 0.55);  // down
-            addFace(faces, q, b, 0, 0, 1, b.Z, b.material, 0.86);   // south
-            addFace(faces, q, b, 0, 0, -1, b.z, b.material, 0.66);  // north
-            addFace(faces, q, b, 1, 0, 0, b.X, b.material, 0.78);   // east
-            addFace(faces, q, b, -1, 0, 0, b.x, b.material, 0.70);  // west
+            addBoxFaces(faces, q, b);
         }
 
         // Fit projected coordinates.
@@ -180,31 +207,70 @@ public final class RenderItem {
         return img;
     }
 
-    static void addFace(List<Face> faces, double[] q, Box b, int nx, int ny, int nz, double plane,
-                        String material, double light) {
-        double[] n = rotate(q, nx, ny, nz);
-        if (n[2] <= 1e-6) return; // back-facing
-        double[][] v;
-        if (ny != 0) {
-            v = new double[][]{{b.x, plane, b.z}, {b.X, plane, b.z}, {b.X, plane, b.Z}, {b.x, plane, b.Z}};
-        } else if (nz != 0) {
-            v = new double[][]{{b.x, b.y, plane}, {b.X, b.y, plane}, {b.X, b.Y, plane}, {b.x, b.Y, plane}};
-        } else {
-            v = new double[][]{{plane, b.y, b.z}, {plane, b.y, b.Z}, {plane, b.Y, b.Z}, {plane, b.Y, b.z}};
+    /**
+     * Emits the six quads of a box, honouring the model's element rotation.
+     * Corners are rotated about the element's own origin and axis first, then
+     * the whole model is turned into the preview view; face normals come from
+     * the rotated corners so back faces cull correctly.
+     */
+    static void addBoxFaces(List<Face> faces, double[] q, Box b) {
+        double[][] c = {
+                {b.x(), b.y(), b.z()}, {b.X(), b.y(), b.z()},
+                {b.X(), b.Y(), b.z()}, {b.x(), b.Y(), b.z()},
+                {b.x(), b.y(), b.Z()}, {b.X(), b.y(), b.Z()},
+                {b.X(), b.Y(), b.Z()}, {b.x(), b.Y(), b.Z()}
+        };
+        if (b.angle() != null && Math.abs(b.angle()) > 1e-9) {
+            for (int i = 0; i < 8; i++) {
+                c[i] = rotateAxis(b.angle(), b.axis(), c[i], b.ox(), b.oy(), b.oz());
+            }
         }
-        double[][] r = new double[4][3];
-        for (int i = 0; i < 4; i++) {
-            double[] p = rotate(q, v[i][0] - 8, v[i][1] - 8, v[i][2] - 8);
-            r[i][0] = p[0];
-            r[i][1] = -p[1]; // screen Y down
-            r[i][2] = p[2];
-        }
-        Integer packed = MATERIALS.get(material);
+        int[][] quads = {{0, 3, 2, 1}, {4, 5, 6, 7}, {0, 4, 7, 3},
+                {1, 2, 6, 5}, {0, 1, 5, 4}, {3, 7, 6, 2}};
+        double[] light = {0.66, 0.86, 0.70, 0.78, 0.55, 1.08};
+        Integer packed = MATERIALS.get(b.material());
         Color base = new Color(packed == null ? 0xff00ff : packed);
-        int rgb = new Color(clamp((int) (base.getRed() * light)),
-                clamp((int) (base.getGreen() * light)),
-                clamp((int) (base.getBlue() * light)), 255).getRGB();
-        faces.add(new Face(r, rgb));
+        for (int face = 0; face < quads.length; face++) {
+            double[] v0 = c[quads[face][0]], v1 = c[quads[face][1]];
+            double[] v2 = c[quads[face][2]], v3 = c[quads[face][3]];
+            double ux = v1[0] - v0[0], uy = v1[1] - v0[1], uz = v1[2] - v0[2];
+            double wx = v2[0] - v0[0], wy = v2[1] - v0[1], wz = v2[2] - v0[2];
+            double nx = uy * wz - uz * wy;
+            double ny = uz * wx - ux * wz;
+            double nz = ux * wy - uy * wx;
+            double length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+            if (length < 1e-9) continue;
+            double[] n = rotate(q, nx / length, ny / length, nz / length);
+            if (n[2] <= 1e-6) continue; // back-facing
+            double[][] r = new double[4][3];
+            double[][] vs = {v0, v1, v2, v3};
+            for (int i = 0; i < 4; i++) {
+                double[] p = rotate(q, vs[i][0] - 8, vs[i][1] - 8, vs[i][2] - 8);
+                r[i][0] = p[0];
+                r[i][1] = -p[1]; // screen Y down
+                r[i][2] = p[2];
+            }
+            int rgb = new Color(clamp((int) (base.getRed() * light[face])),
+                    clamp((int) (base.getGreen() * light[face])),
+                    clamp((int) (base.getBlue() * light[face])), 255).getRGB();
+            faces.add(new Face(r, rgb));
+        }
+    }
+
+    /** Right-handed rotation of a point about an axis through {@code origin}. */
+    static double[] rotateAxis(double angle, String axis, double[] p,
+                               double ox, double oy, double oz) {
+        double radians = Math.toRadians(angle);
+        double cos = Math.cos(radians), sin = Math.sin(radians);
+        double x = p[0] - ox, y = p[1] - oy, z = p[2] - oz;
+        double nx = x, ny = y, nz = z;
+        switch (axis) {
+            case "x" -> { ny = y * cos - z * sin; nz = y * sin + z * cos; }
+            case "y" -> { nx = x * cos + z * sin; nz = -x * sin + z * cos; }
+            case "z" -> { nx = x * cos - y * sin; ny = x * sin + y * cos; }
+            default -> { }
+        }
+        return new double[]{nx + ox, ny + oy, nz + oz};
     }
 
     static double[] quaternionXYZ(double ax, double ay, double az) {

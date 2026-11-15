@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["AAA","BCB","BDB"],"key":{"A":{"item":"minecraft:iron_ingot"},"B":{"item":"minecraft:oak_planks"},"C":{"item":"minecraft:barrel"},"D":{"item":"minecraft:iron_block"}},"result":{"id":"samogon:wine_press","count":1}}

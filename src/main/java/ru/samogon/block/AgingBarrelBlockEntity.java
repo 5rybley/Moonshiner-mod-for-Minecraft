@@ -23,8 +23,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
 import ru.samogon.menu.AgingBarrelMenu;
+import ru.samogon.process.Brewing;
 import ru.samogon.process.Simulation;
 import ru.samogon.process.Simulation.Batch;
+import ru.samogon.process.Wine;
+import ru.samogon.process.WineStyle;
 import ru.samogon.registry.ModBlocks;
 import ru.samogon.registry.ModItems;
 
@@ -294,8 +297,19 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
 
     private ItemStack mature(ItemStack stack, Batch batch) {
         try {
+            // Wine stays wine and beer stays beer. The cask used to bottle every
+            // matured batch as an oak-aged spirit, so a bottle of wine put in the
+            // barrel came back as a spirit bottle under a wine name. Wine takes
+            // on oak only while it is still plain: a styled bottle (vermouth,
+            // port, sweet wine) just settles, so its label is never overwritten.
+            if (Wine.isWine(batch)) {
+                Batch aged = Wine.stillStyleOf(batch) == WineStyle.DRY
+                        ? Wine.oak(batch) : Wine.age(batch);
+                return BatchData.create(ModItems.WINE.get(), aged);
+            }
             Batch matured = Simulation.mature(batch, true);
-            return BatchData.create(ModItems.OAK_AGED_SPIRIT.get(), matured);
+            return BatchData.create(Brewing.isFinishedBeer(batch)
+                    ? ModItems.BEER.get() : ModItems.OAK_AGED_SPIRIT.get(), matured);
         } catch (IllegalArgumentException exception) {
             // A hand-edited bottle outside 4-60% ABV simply stays untouched.
             return stack;

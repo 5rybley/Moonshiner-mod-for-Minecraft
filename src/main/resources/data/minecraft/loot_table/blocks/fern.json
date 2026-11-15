@@ -59,10 +59,41 @@
               "condition": "minecraft:survives_explosion"
             },
             {
-              "chance": 0.05,
+              "chance": 0.2,
               "condition": "minecraft:random_chance"
             }
           ]
+        }
+      ]
+    },
+    {
+      "bonus_rolls": 0.0,
+      "rolls": 1.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        },
+        {
+          "chance": 0.1,
+          "condition": "minecraft:random_chance"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "samogon:cabernet_seeds"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "samogon:merlot_seeds"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "samogon:chardonnay_seeds"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "samogon:riesling_seeds"
         }
       ]
     }

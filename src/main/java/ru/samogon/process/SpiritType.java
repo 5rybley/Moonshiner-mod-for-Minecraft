@@ -69,7 +69,13 @@ public enum SpiritType {
     /** Spirit macerated with berries, herbs, spices or fruit; used by the tincture items. */
     TINCTURE("tincture", true),
     /** Top-fermented grain beer, brewed only in the brewery multiblock. */
-    BEER("beer", true);
+    BEER("beer", true),
+    /** Unfermented grape must from the wine press: an ingredient, not a drink. */
+    MUST("grape_must", false),
+    /** Dry still wine from the winery: red, white or rosé. */
+    WINE("wine", true),
+    /** Sparkling wine made by the traditional second fermentation in the bottle. */
+    SPARKLING_WINE("sparkling_wine", true);
 
     private final String id;
     private final boolean drink;
@@ -128,6 +134,14 @@ public enum SpiritType {
     public static SpiritType of(Batch batch) {
         if (batch == null) return WASH;
 
+        // The winery chain is classified before the distillation taxonomy: a
+        // must is an ingredient, a still wine is a drink and a sparkling wine
+        // keeps the sweetness of its dosage. Distilled grape batches no longer
+        // match these checks and fall through to brandy or cognac below.
+        if (Wine.isMust(batch)) return MUST;
+        if (Wine.isSparkling(batch)) return SPARKLING_WINE;
+        if (Wine.isWine(batch)) return WINE;
+
         // Beer lives outside the distillation taxonomy: the brewery origin
         // identifies it directly, before the "not distilled yet" wash check.
         // The origin may carry a style suffix such as "beer:wheat:honey:ale".
@@ -136,6 +150,10 @@ public enum SpiritType {
         if (Brewing.isFinishedBeer(batch)) return BEER;
         String origin = Brewing.isBeerOrigin(batch.origin())
                 ? Brewing.grainOf(batch.origin()) : batch.origin();
+        // A grape origin carries the colour and, for sparkling, the dosage
+        // after the stage ("wine:red:brut"). Strip them so the family switch
+        // below sees the plain raw material even after distillation.
+        if (Wine.isGrapeOrigin(origin)) origin = Wine.stageOf(origin);
 
         // 0. Not distilled yet: wort or fermented wash.
         if (batch.passes() <= 0) {
@@ -162,6 +180,7 @@ public enum SpiritType {
         if (batch.oak() > 0) {
             return switch (origin) {
                 case "berry" -> batch.passes() >= 2 ? COGNAC : BRANDY;
+                case "wine", "sparkling_wine", "grape_must" -> batch.passes() >= 2 ? COGNAC : BRANDY;
                 case "apple" -> CALVADOS;
                 case "cane" -> CACHACA;
                 case "grain" -> batch.passes() >= 2 ? SCOTCH : WHISKEY;
@@ -180,6 +199,7 @@ public enum SpiritType {
         // 5. Plain fractionally pot-stilled hearts.
         return switch (origin) {
             case "berry" -> CHACHA;
+            case "wine", "sparkling_wine", "grape_must" -> BRANDY;
             case "cane" -> CACHACA;
             case "potato" -> POTATO;
             case "beetroot" -> BEET;
