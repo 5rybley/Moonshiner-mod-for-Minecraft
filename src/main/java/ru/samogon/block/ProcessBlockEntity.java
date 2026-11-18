@@ -29,6 +29,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import ru.samogon.config.SamogonConfig;
 import ru.samogon.effect.Intoxication;
 import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
@@ -87,6 +88,11 @@ public final class ProcessBlockEntity extends BlockEntity {
     private static final int PRESS_TICKS = 200;
     /** Tirage, second fermentation, lees ageing, riddling, disgorging and dosage. */
     private static final int SPARKLING_TICKS = 6000;
+
+    /** Scales a base machine duration by the configured global speed multiplier. */
+    private static int ticks(int baseTicks) {
+        return SamogonConfig.machineTicks(baseTicks);
+    }
 
     public static final int SLOT_INPUT = 0;
     public static final int SLOT_ADDITIVE = 1;
@@ -639,7 +645,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             agingKind = "fortify";
             stage = 3;
             progress = 0;
-            duration = BLEND_TICKS;
+            duration = ticks(BLEND_TICKS);
             setChanged();
             return true;
         }
@@ -661,7 +667,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             blendComposition = "";
             stage = 3;
             progress = 0;
-            duration = BLEND_TICKS;
+            duration = ticks(BLEND_TICKS);
             setChanged();
             return true;
         }
@@ -677,7 +683,7 @@ public final class ProcessBlockEntity extends BlockEntity {
         agingKind = "blend";
         stage = 3;
         progress = 0;
-        duration = INFUSE_TICKS;
+        duration = ticks(INFUSE_TICKS);
         setChanged();
         return true;
     }
@@ -840,7 +846,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 batch = Simulation.mash(origin, bonus);
                 stage = 3;
                 progress = 0;
-                duration = MASH_TICKS;
+                duration = ticks(MASH_TICKS);
                 settle = 0;
                 active = false;
                 return true;
@@ -956,7 +962,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 batch = Wine.must(mustColor(variety, skinContact), variety);
                 stage = 3;
                 progress = 0;
-                duration = PRESS_TICKS;
+                duration = ticks(PRESS_TICKS);
                 settle = 0;
                 active = false;
                 return true;
@@ -992,7 +998,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 consumeSlot(SLOT_ADDITIVE);
                 stage = 2;
                 progress = 0;
-                duration = FERMENT_TICKS;
+                duration = ticks(FERMENT_TICKS);
                 deviationSum = 0;
                 deviationSamples = 0;
                 ambientSum = 0;
@@ -1012,7 +1018,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 fermentAdditive = flavouring;
                 stage = 2;
                 progress = 0;
-                duration = BEER_FERMENT_TICKS;
+                duration = ticks(BEER_FERMENT_TICKS);
                 deviationSum = 0;
                 deviationSamples = 0;
                 ambientSum = 0;
@@ -1035,7 +1041,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 consumeSlot(SLOT_ADDITIVE);
                 stage = 3;
                 progress = 0;
-                duration = FILTER_TICKS;
+                duration = ticks(FILTER_TICKS);
             }
             case BLENDING -> {
                 // The five-slot tray is filled deliberately. Automation must
@@ -1050,7 +1056,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 container = Items.BUCKET;
                 stage = 3;
                 progress = 0;
-                duration = DILUTION_TICKS;
+                duration = ticks(DILUTION_TICKS);
             }
             case AGING -> {
                 if (batch == null) return;
@@ -1071,7 +1077,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 }
                 stage = 3;
                 progress = 0;
-                duration = AGE_TICKS;
+                duration = ticks(AGE_TICKS);
             }
             case SPARKLING -> {
                 // Sugar is the tirage charge and the dosage together; how many
@@ -1084,7 +1090,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 }
                 stage = 3;
                 progress = 0;
-                duration = SPARKLING_TICKS;
+                duration = ticks(SPARKLING_TICKS);
                 deviationSum = 0;
                 deviationSamples = 0;
                 ambientSum = 0;
@@ -1408,7 +1414,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 progress = 0;
                 // This was missing: a freshly loaded rectifier had duration 0
                 // and finished on the first tick instead of running for a minute.
-                duration = RECTIFY_TICKS;
+                duration = ticks(RECTIFY_TICKS);
                 settle = 0;
                 columnRunsLeft = Math.max(1, columnRunsTarget);
             }
@@ -1426,7 +1432,7 @@ public final class ProcessBlockEntity extends BlockEntity {
         }
         // Old saves could contain a stage-3 rectifier with duration 0. Give
         // that run a full duration instead of completing it instantly.
-        if (duration <= 0) duration = RECTIFY_TICKS;
+        if (duration <= 0) duration = ticks(RECTIFY_TICKS);
         if (Environment.heatStrength(level, worldPosition.below()) <= 0) {
             active = false;
             return;
@@ -1443,7 +1449,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             columnRunsLeft--;
             if (columnRunsLeft > 0) {
                 progress = 0;
-                duration = RECTIFY_TICKS;
+                duration = ticks(RECTIFY_TICKS);
                 setChanged();
                 burst(ParticleTypes.CLOUD, 8, 0.2, 0.01);
                 return;
@@ -1467,7 +1473,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             progress = 0;
             return;
         }
-        if (duration <= 0) duration = FILTER_TICKS;
+        if (duration <= 0) duration = ticks(FILTER_TICKS);
         active = true;
         progress++;
         if (progress >= duration) {
@@ -1491,7 +1497,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             blendComposition = "";
             return;
         }
-        if (duration <= 0) duration = BLEND_TICKS;
+        if (duration <= 0) duration = ticks(BLEND_TICKS);
         active = true;
         progress++;
         if (progress < duration) return;
@@ -1547,7 +1553,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             progress = 0;
             return;
         }
-        if (duration <= 0) duration = DILUTION_TICKS;
+        if (duration <= 0) duration = ticks(DILUTION_TICKS);
         active = true;
         progress++;
         if (progress < duration) return;
@@ -1575,7 +1581,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             progress = 0;
             return;
         }
-        if (duration <= 0) duration = AGE_TICKS;
+        if (duration <= 0) duration = ticks(AGE_TICKS);
         active = true;
         progress++;
         if (progress < duration) return;
@@ -1634,7 +1640,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             progress = 0;
             return;
         }
-        if (duration <= 0) duration = PRESS_TICKS;
+        if (duration <= 0) duration = ticks(PRESS_TICKS);
         active = true;
         progress++;
         if (progress < duration) return;
@@ -1660,7 +1666,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             progress = 0;
             return;
         }
-        if (duration <= 0) duration = SPARKLING_TICKS;
+        if (duration <= 0) duration = ticks(SPARKLING_TICKS);
         active = true;
         progress++;
         if (progress < duration) return;
@@ -1897,7 +1903,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 batch = Simulation.mash(origin, bonus);
                 stage = 3;
                 progress = 0;
-                duration = MASH_TICKS;
+                duration = ticks(MASH_TICKS);
                 settle = 0;
                 return InteractionResult.SUCCESS;
             }
@@ -1928,7 +1934,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 consume(player, stack, null);
                 stage = 2;
                 progress = 0;
-                duration = FERMENT_TICKS;
+                duration = ticks(FERMENT_TICKS);
                 deviationSum = 0;
                 deviationSamples = 0;
                 ambientSum = 0;
@@ -1982,7 +1988,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 fermentAdditive = flavouring;
                 stage = 2;
                 progress = 0;
-                duration = BEER_FERMENT_TICKS;
+                duration = ticks(BEER_FERMENT_TICKS);
                 deviationSum = 0;
                 deviationSamples = 0;
                 ambientSum = 0;
@@ -2154,7 +2160,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             consume(player, stack, null);
             stage = 3;
             progress = 0;
-            duration = FILTER_TICKS;
+            duration = ticks(FILTER_TICKS);
             return InteractionResult.SUCCESS;
         }
         if (stage == 2 || stage == 1) {
@@ -2255,7 +2261,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 consume(player, stack, Items.BUCKET);
                 stage = 3;
                 progress = 0;
-                duration = DILUTION_TICKS;
+                duration = ticks(DILUTION_TICKS);
                 return InteractionResult.SUCCESS;
             }
             return InteractionResult.SUCCESS;
@@ -2290,7 +2296,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 consume(player, stack, null);
                 stage = 3;
                 progress = 0;
-                duration = AGE_TICKS;
+                duration = ticks(AGE_TICKS);
                 return InteractionResult.SUCCESS;
             }
             return InteractionResult.SUCCESS;
@@ -2327,7 +2333,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             batch = Wine.must(mustColor(variety, skinContact), variety);
             stage = 3;
             progress = 0;
-            duration = PRESS_TICKS;
+            duration = ticks(PRESS_TICKS);
             settle = 0;
             return InteractionResult.SUCCESS;
         }
@@ -2377,7 +2383,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 }
                 stage = 3;
                 progress = 0;
-                duration = SPARKLING_TICKS;
+                duration = ticks(SPARKLING_TICKS);
                 deviationSum = 0;
                 deviationSamples = 0;
                 ambientSum = 0;

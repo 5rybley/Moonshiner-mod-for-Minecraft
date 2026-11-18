@@ -21,6 +21,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import ru.samogon.config.SamogonConfig;
 import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
 import ru.samogon.menu.BreweryMenu;
@@ -224,7 +225,7 @@ public final class BreweryBlockEntity extends BlockEntity {
     private void begin(int ticks) {
         running = true;
         progress = 0;
-        duration = ticks;
+        duration = SamogonConfig.machineTicks(ticks);
         setChanged();
         burst(ParticleTypes.CAMPFIRE_COSY_SMOKE, 6, 0.4, 0.01);
         if (level != null) {

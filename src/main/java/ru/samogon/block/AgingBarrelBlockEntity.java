@@ -20,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import ru.samogon.config.SamogonConfig;
 import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
 import ru.samogon.menu.AgingBarrelMenu;
@@ -49,6 +50,11 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
     public static final int AGE_TICKS = 7200;
     private static final int[] ALL_SLOTS = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     private static final String PROGRESS_KEY = "samogon_cask_progress";
+
+    /** Maturation time after the configured machine speed multiplier. */
+    private static int ageTicks() {
+        return SamogonConfig.machineTicks(AGE_TICKS);
+    }
 
     /** Values the GUI reads: 0 bottles, 1 chips, 2 progress, 3 ready bottles. */
     public static final int DATA_BOTTLES = 0;
@@ -201,7 +207,7 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
     public int readyCount() {
         int ready = 0;
         for (int slot = 0; slot < BOTTLE_SLOTS; slot++) {
-            if (!inventory.getItem(slot).isEmpty() && progress[slot] >= AGE_TICKS) ready++;
+            if (!inventory.getItem(slot).isEmpty() && progress[slot] >= ageTicks()) ready++;
         }
         return ready;
     }
@@ -211,10 +217,10 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
         int count = 0;
         for (int slot = 0; slot < BOTTLE_SLOTS; slot++) {
             if (inventory.getItem(slot).isEmpty()) continue;
-            sum += Math.min(AGE_TICKS, progress[slot]);
+            sum += Math.min(ageTicks(), progress[slot]);
             count++;
         }
-        return count == 0 ? 0 : (int) Math.round(sum * 100.0 / (count * (double) AGE_TICKS));
+        return count == 0 ? 0 : (int) Math.round(sum * 100.0 / (count * (double) ageTicks()));
     }
 
     // === FORMATION ===
@@ -279,7 +285,7 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
                 progress[slot] = 0;
                 continue;
             }
-            if (progress[slot] >= AGE_TICKS) {
+            if (progress[slot] >= ageTicks()) {
                 if (chips > 0) {
                     chips--;
                     consumeChip();
@@ -359,7 +365,7 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
         int[] saved = tag.getIntArray(PROGRESS_KEY);
         for (int slot = 0; slot < BOTTLE_SLOTS; slot++) {
             int value = slot < saved.length ? saved[slot] : 0;
-            progress[slot] = Math.max(0, Math.min(AGE_TICKS, value));
+            progress[slot] = Math.max(0, Math.min(ageTicks(), value));
         }
     }
 

@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
+import ru.samogon.config.SamogonConfig;
 import ru.samogon.entity.PukeBlockEntity;
 import ru.samogon.item.BatchItem;
 import ru.samogon.network.BlackoutPayload;
@@ -43,8 +44,6 @@ import java.util.Map;
 public final class Intoxication {
     public static final int MAX_LEVEL = 5;
 
-    /** Level V makes the world go black once the drinker has been that drunk this long. */
-    private static final int BLACKOUT_TICKS = 30 * 20;
     /** Client-side fade-in; the teleport waits for the screen to be dark. */
     private static final int BLACKOUT_FADE_TICKS = 12;
     private static final int BLACKOUT_HOLD_TICKS = 46;
@@ -695,18 +694,20 @@ public final class Intoxication {
     }
 
     /**
-     * At level V the drinker's world goes black after half a minute and they wake
-     * up somewhere nearby. The timer resets each time it fires, so staying this
-     * drunk keeps costing them.
+     * At level V the drinker's world goes black after the configured delay and
+     * they wake up somewhere nearby. The timer resets each time it fires, so
+     * staying this drunk keeps costing them. The chat line lives in
+     * {@link IntoxicationEvents}: it is shown once when the session ends, not on
+     * every faint.
      */
     private static void tickBlackout(ServerPlayer player, int level) {
         CompoundTag data = player.getPersistentData();
-        if (level < MAX_LEVEL) {
+        if (level < MAX_LEVEL || !SamogonConfig.blackoutEnabled()) {
             data.remove(BLACKOUT_TIMER);
             return;
         }
         int elapsed = data.getInt(BLACKOUT_TIMER) + 1;
-        if (elapsed >= BLACKOUT_TICKS) {
+        if (elapsed >= SamogonConfig.blackoutTicks()) {
             elapsed = 0;
             blackout(player);
         }
@@ -719,7 +720,6 @@ public final class Intoxication {
         player.addEffect(new MobEffectInstance(
                 MobEffects.BLINDNESS, BLACKOUT_FADE_TICKS + BLACKOUT_HOLD_TICKS, 0, true, false, false));
         PacketDistributor.sendToPlayer(player, new BlackoutPayload(BLACKOUT_FADE_TICKS, BLACKOUT_HOLD_TICKS));
-        player.displayClientMessage(Component.translatable("message.samogon.intoxication.blackout"), false);
 
         // Teleport once the screen has finished fading to black, so the player
         // never sees the jump itself.

@@ -7,8 +7,10 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import ru.samogon.config.SamogonConfig;
 import ru.samogon.registry.ModBlocks;
 import ru.samogon.registry.ModEffects;
 import ru.samogon.registry.ModEntityTypes;
@@ -30,6 +32,7 @@ public final class SamogonMod {
                     .build());
 
     public SamogonMod(IEventBus modBus, ModContainer container) {
+        container.registerConfig(ModConfig.Type.COMMON, SamogonConfig.SPEC);
         ModBlocks.BLOCKS.register(modBus);
         ModBlocks.BLOCK_ITEMS.register(modBus);
         ModBlocks.BLOCK_ENTITIES.register(modBus);

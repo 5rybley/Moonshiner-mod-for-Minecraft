@@ -60,6 +60,20 @@ Verification tasks:
 .\gradlew.bat verifySimulation  # gradual rectification and mass-balance smoke test
 ```
 
+## Configuration
+
+The first launch writes `config/samogon-common.toml`. It is a common config, so one file covers single-player and a dedicated server:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `gameplay.hangoverEnabled` | `true` | Apply a hangover after a session that reached intoxication level III or higher |
+| `gameplay.hangoverDurationMultiplier` | `1.0` | Scales the hangover duration (`0.0` disables it, `0.5` halves it, `2.0` doubles it) |
+| `gameplay.blackoutEnabled` | `true` | Level-V drinkers faint and wake up nearby |
+| `gameplay.blackoutDelaySeconds` | `30` | Seconds spent at level V before the blackout fires |
+| `machines.speedMultiplier` | `1.0` | Speed of every timed machine (`2.0` runs twice as fast, `0.5` at half speed) |
+
+Changes apply the next time the config is loaded - through the in-game **Mods → Config** screen, or after a restart.
+
 ## Project layout
 
 ```

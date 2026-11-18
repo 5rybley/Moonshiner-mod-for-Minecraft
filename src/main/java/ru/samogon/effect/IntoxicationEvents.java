@@ -16,6 +16,7 @@ import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import ru.samogon.SamogonMod;
+import ru.samogon.config.SamogonConfig;
 import ru.samogon.registry.ModEffects;
 
 /**
@@ -52,14 +53,21 @@ public final class IntoxicationEvents {
         // Sober again: drop the drink's auras and the hue marker so the next
         // bottle starts clean and no stale beneficial effect lingers.
         Intoxication.clearAuras(player);
-        if (peak >= 3) {
+        // The "you drank too much" line marks the end of a level-V session, not
+        // every faint along the way.
+        if (peak >= Intoxication.MAX_LEVEL) {
+            player.displayClientMessage(
+                    Component.translatable("message.samogon.intoxication.blackout"), false);
+        }
+        if (peak >= 3 && SamogonConfig.hangoverEnabled()
+                && SamogonConfig.hangoverDurationMultiplier() > 0.0D) {
             applyHangover(player, peak);
         }
         Intoxication.clearPeak(player);
     }
 
     private static void applyHangover(ServerPlayer player, int peak) {
-        int duration = (60 + 30 * peak) * 20;
+        int duration = (int) Math.round((60 + 30 * peak) * 20 * SamogonConfig.hangoverDurationMultiplier());
         int amplifier = peak >= 5 ? 1 : 0;
         player.addEffect(new MobEffectInstance(
                 ModEffects.HANGOVER, duration, amplifier, false, true, true));
