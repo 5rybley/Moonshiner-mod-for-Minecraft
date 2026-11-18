@@ -6,7 +6,7 @@ Drinks are not crafted here: you carry them through the whole process, and every
 
 | | |
 |---|---|
-| **Version** | `0.0.3 beta` |
+| **Version** | `1.0.0` |
 | **Minecraft** | `1.21.1` |
 | **Loader** | NeoForge `21.1.176+` |
 | **Java** | 21 |
@@ -49,7 +49,7 @@ JDK 21 must be installed and `JAVA_HOME` set to it. From the project root:
 .\gradlew.bat build
 ```
 
-The artifact appears in `build/libs/moonshiner-0.0.3-beta.jar`.
+The artifact appears in `build/libs/moonshiner-1.0.0.jar`.
 
 Verification tasks:
 
