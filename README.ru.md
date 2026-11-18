@@ -44,8 +44,7 @@ $env:JAVA_HOME='C:\Users\administrator\AppData\Roaming\.minecraft\runtime\java-r
 |---|---|---|
 | `gameplay.hangoverEnabled` | `true` | Похмелье после сессии, дошедшей до III ступени опьянения |
 | `gameplay.hangoverDurationMultiplier` | `1.0` | Множитель длительности похмелья (`0.0` — выключить, `0.5` — вдвое короче, `2.0` — вдвое дольше) |
-| `gameplay.blackoutEnabled` | `true` | На V ступени игрок падает в обморок и приходит в себя неподалёку |
-| `gameplay.blackoutDelaySeconds` | `30` | Секунд на V ступени до обморока |
+| `gameplay.blackoutEnabled` | `true` | Сессия с V ступенью заканчивается обмороком: экран темнеет, игрок приходит в себя неподалёку |
 | `machines.speedMultiplier` | `1.0` | Скорость всех аппаратов: `2.0` — вдвое быстрее, `0.5` — вдвое медленнее |
 
 Изменения вступают в силу при следующей загрузке конфига — через экран **Mods → Config** в игре или после перезапуска.

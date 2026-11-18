@@ -688,7 +688,7 @@
   "message.samogon.brine.cured": "The brine cuts through the fog. Your head clears.",
   "message.samogon.brine.sober": "The brine washes the drink down a notch.",
   "message.samogon.brine.fresh": "Sharp, salty and bracing. You feel awake.",
-  "tooltip.samogon.intoxication": "Intoxication I–V: heavy nausea and unsteady feet; at IV–V you vomit, at IV+ you swat arrows aside, at V your vision blacks out after half a minute and you wake up somewhere else",
+  "tooltip.samogon.intoxication": "Intoxication I-V: heavy nausea and unsteady feet; at IV-V you vomit, at IV+ you swat arrows aside, and when V finally passes your vision blacks out and you wake up somewhere else",
   "tooltip.samogon.tincture.berry": "Berry Fury: melee strikes hit harder; stronger with each berry aroma",
   "tooltip.samogon.tincture.honey": "Honey Guard: a chance to fully negate damage; stronger with each honey aroma",
   "tooltip.samogon.tincture.botanical": "Botanical Clarity: regeneration and less nausea; stronger with each botanical aroma",

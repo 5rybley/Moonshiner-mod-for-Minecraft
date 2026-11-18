@@ -26,7 +26,6 @@ public final class SamogonConfig {
     public static final ModConfigSpec.BooleanValue HANGOVER_ENABLED;
     public static final ModConfigSpec.DoubleValue HANGOVER_DURATION_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue BLACKOUT_ENABLED;
-    public static final ModConfigSpec.IntValue BLACKOUT_DELAY_SECONDS;
     public static final ModConfigSpec.DoubleValue MACHINE_SPEED_MULTIPLIER;
 
     static {
@@ -40,12 +39,10 @@ public final class SamogonConfig {
                 .comment("Scales the hangover duration. 0.0 disables the effect, 0.5 halves it, 2.0 doubles it.")
                 .defineInRange("hangoverDurationMultiplier", 1.0D, 0.0D, 10.0D);
         BLACKOUT_ENABLED = builder
-                .comment("At intoxication level V the drinker faints and wakes up nearby.",
+                .comment("At intoxication level V the drinker's session ends with a blackout: the screen fades,",
+                        "\"you drank too much\" is shown and the drinker comes to somewhere nearby.",
                         "Set to false to keep the top level harmless beyond nausea and vomiting.")
                 .define("blackoutEnabled", true);
-        BLACKOUT_DELAY_SECONDS = builder
-                .comment("Seconds spent at intoxication level V before the drinker faints. The timer restarts each time.")
-                .defineInRange("blackoutDelaySeconds", 30, 5, 600);
         builder.pop();
 
         builder.push("machines");
@@ -80,10 +77,5 @@ public final class SamogonConfig {
 
     public static boolean blackoutEnabled() {
         return BLACKOUT_ENABLED.get();
-    }
-
-    /** Ticks at level V before the blackout fires. */
-    public static int blackoutTicks() {
-        return BLACKOUT_DELAY_SECONDS.get() * 20;
     }
 }

@@ -49,15 +49,17 @@ public final class IntoxicationEvents {
 
         int peak = Intoxication.peakLevel(player);
         Intoxication.clearCured(player);
-        Intoxication.clearBlackoutTimer(player);
         // Sober again: drop the drink's auras and the hue marker so the next
         // bottle starts clean and no stale beneficial effect lingers.
         Intoxication.clearAuras(player);
-        // The "you drank too much" line marks the end of a level-V session, not
-        // every faint along the way.
-        if (peak >= Intoxication.MAX_LEVEL) {
-            player.displayClientMessage(
-                    Component.translatable("message.samogon.intoxication.blackout"), false);
+        // A session that reached level V ends with the blackout: the screen
+        // fades to black, "you drank too much" is shown and the drinker comes to
+        // somewhere nearby. It fires once, here, instead of on a timer while
+        // drunk.
+        if (peak >= Intoxication.MAX_LEVEL
+                && SamogonConfig.blackoutEnabled()
+                && player.isAlive() && !player.isSpectator()) {
+            Intoxication.blackout(player);
         }
         if (peak >= 3 && SamogonConfig.hangoverEnabled()
                 && SamogonConfig.hangoverDurationMultiplier() > 0.0D) {

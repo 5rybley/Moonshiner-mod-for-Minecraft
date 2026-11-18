@@ -24,7 +24,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
-import ru.samogon.config.SamogonConfig;
 import ru.samogon.entity.PukeBlockEntity;
 import ru.samogon.item.BatchItem;
 import ru.samogon.network.BlackoutPayload;
@@ -49,7 +48,6 @@ public final class Intoxication {
     private static final int BLACKOUT_HOLD_TICKS = 46;
     /** How far the blackout can fling the drinker, in blocks. */
     private static final double BLACKOUT_RADIUS = 30.0;
-    private static final String BLACKOUT_TIMER = "samogon:blackout_timer";
     /** One lump of puke leaves the mouth every this many ticks (1 per 0.15s). */
     private static final int PUKE_INTERVAL_TICKS = 3;
     /** How many lumps of the current volley are still waiting to come out. */
@@ -108,11 +106,6 @@ public final class Intoxication {
 
     static void clearCured(Player player) {
         player.getPersistentData().remove(CURED_SESSION);
-    }
-
-    /** Drops the level-V blackout countdown when the effect ends outright. */
-    static void clearBlackoutTimer(Player player) {
-        player.getPersistentData().remove(BLACKOUT_TIMER);
     }
 
     /**
@@ -342,7 +335,6 @@ public final class Intoxication {
         }
 
         refreshAura(player, level);
-        tickBlackout(player, level);
 
         if (botanical && player.tickCount % 100 == 0) {
             player.addEffect(new MobEffectInstance(
@@ -694,32 +686,17 @@ public final class Intoxication {
     }
 
     /**
-     * At level V the drinker's world goes black after the configured delay and
-     * they wake up somewhere nearby. The timer resets each time it fires, so
-     * staying this drunk keeps costing them. The chat line lives in
-     * {@link IntoxicationEvents}: it is shown once when the session ends, not on
-     * every faint.
+     * The level-V blackout: the drinker's world fades to black, "Вы слишком
+     * много выпили" is shown and they come to somewhere nearby. It fires once,
+     * when the level-V session ends, instead of on a timer while drunk.
      */
-    private static void tickBlackout(ServerPlayer player, int level) {
-        CompoundTag data = player.getPersistentData();
-        if (level < MAX_LEVEL || !SamogonConfig.blackoutEnabled()) {
-            data.remove(BLACKOUT_TIMER);
-            return;
-        }
-        int elapsed = data.getInt(BLACKOUT_TIMER) + 1;
-        if (elapsed >= SamogonConfig.blackoutTicks()) {
-            elapsed = 0;
-            blackout(player);
-        }
-        data.putInt(BLACKOUT_TIMER, elapsed);
-    }
-
-    private static void blackout(ServerPlayer player) {
+    public static void blackout(ServerPlayer player) {
         ServerLevel server = player.serverLevel();
         server.playSound(null, player.blockPosition(), SoundEvents.WITHER_HURT, SoundSource.PLAYERS, 0.9F, 0.55F);
         player.addEffect(new MobEffectInstance(
                 MobEffects.BLINDNESS, BLACKOUT_FADE_TICKS + BLACKOUT_HOLD_TICKS, 0, true, false, false));
         PacketDistributor.sendToPlayer(player, new BlackoutPayload(BLACKOUT_FADE_TICKS, BLACKOUT_HOLD_TICKS));
+        player.displayClientMessage(Component.translatable("message.samogon.intoxication.blackout"), false);
 
         // Teleport once the screen has finished fading to black, so the player
         // never sees the jump itself.
