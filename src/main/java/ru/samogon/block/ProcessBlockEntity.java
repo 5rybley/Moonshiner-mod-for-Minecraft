@@ -347,10 +347,12 @@ public final class ProcessBlockEntity extends BlockEntity {
             case FILTER -> ModItems.FILTERED_SPIRIT.get();
             case BLENDING -> Wine.isWine(batch) ? ModItems.WINE.get()
                     : Wine.isSparkling(batch) ? ModItems.SPARKLING_WINE.get()
-                    : isBeerBatch() ? ModItems.BEER.get() : ModItems.SAMOGON.get();
+                    : isBeerBatch() ? ModItems.BEER.get()
+                    : isKvassBatch() ? ModItems.KVASS.get() : ModItems.SAMOGON.get();
             case DILUTION -> ModItems.DILUTED_SPIRIT.get();
             case AGING -> Wine.isWine(batch) ? ModItems.WINE.get() : ModItems.OAK_AGED_SPIRIT.get();
-            case BEER_FERMENTATION -> ModItems.BEER.get();
+            case BEER_FERMENTATION -> isKvassWort() ? ModItems.KVASS_WORT.get()
+                    : isKvassBatch() ? ModItems.KVASS.get() : ModItems.BEER.get();
             case PRESSING -> ModItems.GRAPE_MUST.get();
             case SPARKLING -> ModItems.SPARKLING_WINE.get();
             // The tasting table never bottles anything: the sample stays on it.
@@ -867,10 +869,13 @@ public final class ProcessBlockEntity extends BlockEntity {
                 return true;
             }
             case BEER_FERMENTATION -> {
-                // Only hop-boiled brewer's wort is charged here; the barrel is
-                // the last brewery step, so sweet wort and finished beer bounce.
+                // Hop-boiled brewer's wort or kvass wort is charged here; the
+                // barrel is the last brewery step, so sweet wort and finished
+                // drinks bounce.
                 Batch hopped = readBatch(stack);
-                if (hopped == null || Brewing.stageOf(hopped) != Brewing.STAGE_HOPPED) return false;
+                if (hopped == null) return false;
+                int step = Brewing.stageOf(hopped);
+                if (step != Brewing.STAGE_HOPPED && step != Brewing.STAGE_KVASS_WORT) return false;
                 batch = hopped;
                 stage = 1;
                 progress = 0;
@@ -1179,7 +1184,7 @@ public final class ProcessBlockEntity extends BlockEntity {
         return switch (kind()) {
             case TASTING -> null;
             case BEER_FERMENTATION -> ModItems.WOODEN_MUG.get();
-            case BLENDING -> isBeerBatch() ? ModItems.WOODEN_MUG.get() : Items.GLASS_BOTTLE;
+            case BLENDING -> isMugBatch() ? ModItems.WOODEN_MUG.get() : Items.GLASS_BOTTLE;
             default -> Items.GLASS_BOTTLE;
         };
     }
@@ -1195,7 +1200,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             case BEER_FERMENTATION -> MUG;
             // Wine keeps its own bottle size at the blending table: a cuvée of
             // two bottles must not turn into a tray of tiny spirit samples.
-            case BLENDING -> isBeerBatch() ? MUG
+            case BLENDING -> isMugBatch() ? MUG
                     : Wine.isWine(batch) ? Wine.BOTTLE_VOLUME : BOTTLE;
             default -> BOTTLE;
         };
@@ -1204,6 +1209,21 @@ public final class ProcessBlockEntity extends BlockEntity {
     /** True when the loaded batch is a finished beer rather than a spirit. */
     private boolean isBeerBatch() {
         return Brewing.isFinishedBeer(batch);
+    }
+
+    /** True when the loaded batch is finished bread kvass. */
+    private boolean isKvassBatch() {
+        return Brewing.isFinishedKvass(batch);
+    }
+
+    /** True when the batch is served in a wooden mug: beer or bread kvass. */
+    private boolean isMugBatch() {
+        return isBeerBatch() || isKvassBatch();
+    }
+
+    /** True while the barrel holds unfermented kvass wort. */
+    private boolean isKvassWort() {
+        return batch != null && Brewing.stageOf(batch) == Brewing.STAGE_KVASS_WORT;
     }
 
     private boolean canBottleBatch() {
@@ -1222,7 +1242,11 @@ public final class ProcessBlockEntity extends BlockEntity {
             case BLENDING -> blendOutput();
             case DILUTION -> ModItems.DILUTED_SPIRIT.get();
             case AGING -> Wine.isWine(batch) ? ModItems.WINE.get() : ModItems.OAK_AGED_SPIRIT.get();
-            case BEER_FERMENTATION -> ModItems.BEER.get();
+            case BEER_FERMENTATION -> {
+                if (isKvassWort()) yield ModItems.KVASS_WORT.get();
+                if (isKvassBatch()) yield ModItems.KVASS.get();
+                yield ModItems.BEER.get();
+            }
             case PRESSING -> ModItems.GRAPE_MUST.get();
             case SPARKLING -> ModItems.SPARKLING_WINE.get();
             case DISTILLER, TASTING -> null;
@@ -1240,8 +1264,9 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (batch != null && Wine.isWine(batch)) return ModItems.WINE.get();
         if (batch != null && Wine.isSparkling(batch)) return ModItems.SPARKLING_WINE.get();
         // A blended brew stays beer and is served in a mug; only spirits are
-        // bottled in glass.
+        // bottled in glass. Kvass is a brew too and keeps its own mug item.
         if (isBeerBatch()) return ModItems.BEER.get();
+        if (isKvassBatch()) return ModItems.KVASS.get();
         if ("dilute".equals(agingKind)) return ModItems.DILUTED_SPIRIT.get();
         if (batch != null) {
             // Gin, absinthe and liqueur are one artisan bottle whose dynamic
@@ -1296,7 +1321,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             stage = 4;
             active = false;
             setChanged();
-            burst(ParticleTypes.CAMPFIRE_COSY_SMOKE, 12, 0.35, 0.02);
             level.playSound(null, worldPosition, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.5f, 1.2f);
         }
     }
@@ -1337,7 +1361,9 @@ public final class ProcessBlockEntity extends BlockEntity {
         // so the finished mug keeps its grain and flavouring in the origin.
         // Grape must ferments in the same barrel, but along the winery chain.
         if (kind() == ProcessBlock.Kind.BEER_FERMENTATION) {
-            batch = Brewing.ferment(batch, averageDeviation, averageTemperature, fermentAdditive);
+            batch = Brewing.stageOf(batch) == Brewing.STAGE_KVASS_WORT
+                    ? Brewing.fermentKvass(batch, averageDeviation, averageTemperature)
+                    : Brewing.ferment(batch, averageDeviation, averageTemperature, fermentAdditive);
         } else if (Wine.isMust(batch)) {
             batch = Wine.ferment(batch, averageTemperature);
         } else {
@@ -1451,7 +1477,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                 progress = 0;
                 duration = ticks(RECTIFY_TICKS);
                 setChanged();
-                burst(ParticleTypes.CLOUD, 8, 0.2, 0.01);
+                burst(ParticleTypes.SMOKE, 8, 0.2, 0.01);
                 return;
             }
             sieve = false;
@@ -1459,7 +1485,7 @@ public final class ProcessBlockEntity extends BlockEntity {
             active = false;
             progress = duration;
             setChanged();
-            burst(ParticleTypes.CLOUD, 16, 0.25, 0.02);
+            burst(ParticleTypes.SMOKE, 16, 0.25, 0.02);
             level.playSound(null, worldPosition, SoundEvents.BREWING_STAND_BREW,
                     SoundSource.BLOCKS, 0.55f, 1.25f);
         }
@@ -1604,7 +1630,6 @@ public final class ProcessBlockEntity extends BlockEntity {
             stage = 4;
             active = false;
             progress = duration;
-            burst(ParticleTypes.END_ROD, 14, 0.25, 0.01);
             level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME,
                     SoundSource.BLOCKS, 0.45f, 1.4f);
         } catch (IllegalArgumentException exception) {
@@ -1745,24 +1770,20 @@ public final class ProcessBlockEntity extends BlockEntity {
         return batch.alcohol() * 100 / 40.0 <= 4000.0 + 1.0E-9;
     }
 
-    /** Server-side landmarks: coloured drips, steam and a golden "ready" crown. */
+    /** Server-side landmarks: coloured drips and working steam only. */
     private void emitEffects() {
         if (!(level instanceof ServerLevel server)) return;
         double x = worldPosition.getX() + 0.5;
         double y = worldPosition.getY() + 0.5;
         double z = worldPosition.getZ() + 0.5;
 
-        if (isReady() && tickCounter % 14 == 0) {
-            server.sendParticles(ParticleTypes.END_ROD, x, y + 0.95, z,
-                    2, 0.3, 0.12, 0.3, 0.01);
-            server.sendParticles(ParticleTypes.ELECTRIC_SPARK, x, y + 0.7, z,
-                    1, 0.38, 0.2, 0.38, 0.005);
-        }
         if (!active || tickCounter % 8 != 0) return;
 
         switch (kind()) {
-            case MASHING -> server.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE,
-                    x, y + 0.85, z, 1, 0.35, 0.05, 0.35, 0.008);
+            case MASHING -> {
+                // The mashing tun stays quiet in the air; the fire underneath
+                // is the heat cue.
+            }
             case FERMENTATION, BEER_FERMENTATION -> {
                 server.sendParticles(ParticleTypes.BUBBLE_POP, x, y + 0.9, z,
                         1, 0.3, 0.05, 0.3, 0.005);
@@ -1782,7 +1803,7 @@ public final class ProcessBlockEntity extends BlockEntity {
                             1, 0.02, 0.01, 0.02, 0.0);
                 }
             }
-            case RECTIFIER -> server.sendParticles(ParticleTypes.CLOUD, x, y + 0.85, z,
+            case RECTIFIER -> server.sendParticles(ParticleTypes.SMOKE, x, y + 0.85, z,
                     1, 0.15, 0.05, 0.15, 0.005);
             case FILTER -> server.sendParticles(ParticleTypes.DRIPPING_WATER, x, y + 0.15, z,
                     1, 0.15, 0.02, 0.15, 0.0);
@@ -1961,7 +1982,8 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (stage == 0) {
             if (stack.getItem() instanceof ru.samogon.item.BatchItem) {
                 Batch hopped = BatchData.read(stack);
-                if (hopped == null || Brewing.stageOf(hopped) != Brewing.STAGE_HOPPED) {
+                int step = hopped == null ? Brewing.STAGE_EMPTY : Brewing.stageOf(hopped);
+                if (step != Brewing.STAGE_HOPPED && step != Brewing.STAGE_KVASS_WORT) {
                     return InteractionResult.SUCCESS;
                 }
                 batch = hopped;
@@ -1977,7 +1999,8 @@ public final class ProcessBlockEntity extends BlockEntity {
         }
         if (stage == 1) {
             if (stack.is(ModItems.YEAST.get())) {
-                String flavouring = flavorOf(inventory.getItem(SLOT_INPUT));
+                // Kvass has no flavouring step: the bread does the talking.
+                String flavouring = isKvassWort() ? Brewing.NO_ADDITIVE : flavorOf(inventory.getItem(SLOT_INPUT));
                 if (!Brewing.NO_ADDITIVE.equals(flavouring)) {
                     if (inventory.getItem(SLOT_INPUT).is(Items.HONEY_BOTTLE)) {
                         returnContainer(Items.GLASS_BOTTLE);
@@ -2000,17 +2023,20 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (stage == 2) {
             return InteractionResult.SUCCESS;
         }
-        return bottleMug(player, stack);
+        // Both beer and bread kvass are served in a wooden mug, so a right click
+        // with an empty mug draws one serving of whichever finished batch is in
+        // the barrel.
+        return bottleMug(player, stack, isKvassBatch() ? ModItems.KVASS.get() : ModItems.BEER.get());
     }
 
-    /** Draws one wooden mug of finished beer, leaving the rest for later. */
-    private InteractionResult bottleMug(Player player, ItemStack stack) {
+    /** Draws one wooden mug of the finished drink, leaving the rest for later. */
+    private InteractionResult bottleMug(Player player, ItemStack stack, Item drink) {
         if (!stack.is(ModItems.WOODEN_MUG.get()) || batch == null) {
             return InteractionResult.SUCCESS;
         }
         Batch portion = takePortion(MUG);
         consume(player, stack, null);
-        giveOrDrop(player, BatchData.create(ModItems.BEER.get(), portion));
+        giveOrDrop(player, BatchData.create(drink, portion));
         level.playSound(null, worldPosition, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 0.7f, 0.95f);
         return InteractionResult.SUCCESS;
     }
@@ -2213,7 +2239,7 @@ public final class ProcessBlockEntity extends BlockEntity {
     /**
      * Draws a finished blend by hand. A blended brew is served in a wooden mug
      * and a blended spirit in a glass bottle, so the held vessel must match the
-     * drink: beer and samogon never swap containers.
+     * drink: beer, kvass and samogon never swap containers.
      */
     private InteractionResult bottleBlend(Player player, ItemStack stack) {
         if (batch == null) {
@@ -2223,11 +2249,11 @@ public final class ProcessBlockEntity extends BlockEntity {
         if (item == null) {
             return InteractionResult.SUCCESS;
         }
-        boolean beer = isBeerBatch();
-        if (!stack.is(beer ? ModItems.WOODEN_MUG.get() : Items.GLASS_BOTTLE)) {
+        boolean mug = isMugBatch();
+        if (!stack.is(mug ? ModItems.WOODEN_MUG.get() : Items.GLASS_BOTTLE)) {
             return InteractionResult.SUCCESS;
         }
-        Batch portion = takePortion(beer ? MUG
+        Batch portion = takePortion(mug ? MUG
                 : Wine.isWine(batch) ? Wine.BOTTLE_VOLUME : BOTTLE);
         consume(player, stack, null);
         giveOrDrop(player, BatchData.create(item, portion));

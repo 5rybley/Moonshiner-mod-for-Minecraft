@@ -233,6 +233,7 @@ public final class BrewersGuideScreen extends Screen {
             case MALT -> drawMalt(g);
             case MASH -> drawMash(g);
             case BOIL -> drawBoil(g);
+            case KVASS -> drawKvass(g);
             case FERMENT -> drawFerment(g);
             case BOTTLE -> drawBottle(g);
             case TROUBLE -> drawTrouble(g);
@@ -516,6 +517,34 @@ public final class BrewersGuideScreen extends Screen {
         return y + tipH;
     }
 
+    private int drawKvass(GuiGraphics g) {
+        int x = CONTENT_X;
+        int w = CONTENT_W;
+        drawItem(g, new ItemStack(ModBlocks.BREWERY.get()), 186, 50, 36);
+        drawIcon(g, 0, 230, 64, 14);
+        drawItem(g, new ItemStack(ModItems.RUSKS.get()), 244, 58, 26);
+        drawItem(g, new ItemStack(Items.WATER_BUCKET), 280, 58, 26);
+        drawItem(g, new ItemStack(ModItems.KVASS_WORT.get()), 320, 56, 28);
+        centered(g, Component.translatable("guide.samogon.brewer.page.kvass.label.brewery"),
+                204, 88, COPPER_DARK);
+        centered(g, Component.translatable("guide.samogon.brewer.page.kvass.label.rusks"),
+                257, 88, COPPER_DARK);
+        centered(g, Component.translatable("guide.samogon.brewer.page.kvass.label.wort"),
+                334, 88, COPPER_DARK);
+
+        int y = 104;
+        y += step(g, x, y, w, 3, "guide.samogon.brewer.page.kvass.step1", INK) + 5;
+        y += step(g, x, y, w, 1, "guide.samogon.brewer.page.kvass.step2", INK) + 5;
+        y += step(g, x, y, w, 5, "guide.samogon.brewer.page.kvass.step3", INK) + 5;
+        y += step(g, x, y, w, 4, "guide.samogon.brewer.page.kvass.step4", INK) + 5;
+
+        int tipH = 7 + textHeight("guide.samogon.brewer.page.kvass.tip", w - 25);
+        panel(g, x, y, w, tipH);
+        drawIcon(g, 9, x + 5, y + 6, 10);
+        text(g, "guide.samogon.brewer.page.kvass.tip", x + 20, y + 4, w - 25, INK);
+        return y + tipH;
+    }
+
     private int drawFerment(GuiGraphics g) {
         int x = CONTENT_X;
         int w = CONTENT_W;
@@ -713,6 +742,7 @@ public final class BrewersGuideScreen extends Screen {
             case MALT -> new ItemStack(ModItems.MALT.get());
             case MASH -> new ItemStack(ModBlocks.BREWERY.get());
             case BOIL -> new ItemStack(ModItems.HOPS.get());
+            case KVASS -> new ItemStack(ModItems.KVASS.get());
             case FERMENT -> new ItemStack(ModItems.YEAST.get());
             case BOTTLE -> new ItemStack(ModItems.WOODEN_MUG.get());
             case TROUBLE -> new ItemStack(ModItems.THERMOMETER.get());
@@ -859,6 +889,7 @@ public final class BrewersGuideScreen extends Screen {
         MALT("guide.samogon.brewer.toc.malt", "guide.samogon.brewer.page.malt.title", "guide.samogon.brewer.page.malt.tag"),
         MASH("guide.samogon.brewer.toc.mash", "guide.samogon.brewer.page.mash.title", "guide.samogon.brewer.page.mash.tag"),
         BOIL("guide.samogon.brewer.toc.boil", "guide.samogon.brewer.page.boil.title", "guide.samogon.brewer.page.boil.tag"),
+        KVASS("guide.samogon.brewer.toc.kvass", "guide.samogon.brewer.page.kvass.title", "guide.samogon.brewer.page.kvass.tag"),
         FERMENT("guide.samogon.brewer.toc.ferment", "guide.samogon.brewer.page.ferment.title", "guide.samogon.brewer.page.ferment.tag"),
         BOTTLE("guide.samogon.brewer.toc.bottle", "guide.samogon.brewer.page.bottle.title", "guide.samogon.brewer.page.bottle.tag"),
         TROUBLE("guide.samogon.brewer.toc.trouble", "guide.samogon.brewer.page.trouble.title", "guide.samogon.brewer.page.trouble.tag"),

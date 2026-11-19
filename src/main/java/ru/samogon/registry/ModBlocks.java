@@ -1,6 +1,7 @@
 package ru.samogon.registry;
 
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -8,6 +9,7 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.PushReaction;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -15,6 +17,8 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import ru.samogon.SamogonMod;
 import ru.samogon.block.AgingBarrelBlock;
 import ru.samogon.block.AgingBarrelBlockEntity;
+import ru.samogon.block.BanyaStoveBlock;
+import ru.samogon.block.BanyaStoveBlockEntity;
 import ru.samogon.block.BottleRackBlock;
 import ru.samogon.block.BreweryBlock;
 import ru.samogon.block.BreweryBlockEntity;
@@ -24,6 +28,8 @@ import ru.samogon.block.GrapeVineBlock;
 import ru.samogon.block.HopsCropBlock;
 import ru.samogon.block.PlacedDrinkBlock;
 import ru.samogon.block.PlacedDrinkBlockEntity;
+import ru.samogon.block.PlacedVesselBlock;
+import ru.samogon.block.PlacedVesselBlockEntity;
 import ru.samogon.block.ProcessBlock;
 import ru.samogon.block.ProcessBlockEntity;
 import ru.samogon.block.SamogonCrateBlock;
@@ -82,6 +88,16 @@ public final class ModBlocks {
     public static final DeferredItem<Item> CONDENSER_ITEM = BLOCK_ITEMS.register("condenser",
             () -> new CondenserItem(CONDENSER.get(), new Item.Properties()));
     /**
+     * The banya stove: the first block of the Russian line. A fire underneath
+     * heats the stones and a poured bucket of water turns into hangover-clearing
+     * steam. Deliberately a plain block with no block entity.
+     */
+    public static final DeferredBlock<Block> BANYA_STOVE = BLOCKS.register("banya_stove",
+            () -> new BanyaStoveBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.STONE_BRICKS)
+                    .strength(2.5f).sound(SoundType.STONE).noOcclusion()));
+    public static final DeferredItem<Item> BANYA_STOVE_ITEM = BLOCK_ITEMS.register("banya_stove",
+            () -> new BlockItem(BANYA_STOVE.get(), new Item.Properties()));
+    /**
      * The hop crop. It deliberately has no block item: seeds plant it, and
      * both the seeds and the harvested hops are ordinary items.
      */
@@ -107,6 +123,28 @@ public final class ModBlocks {
             () -> new PlacedDrinkBlock(BlockBehaviour.Properties.of()
                     .instabreak().noCollission().noOcclusion().sound(SoundType.WOOD)
                     .pushReaction(PushReaction.BLOCK)));
+    /**
+     * The small stacka (стопка): a short straight glass set on a table. It is
+     * filled from a bottle and drunk straight from the world.
+     */
+    public static final DeferredBlock<Block> SHOT_GLASS = BLOCKS.register("shot_glass",
+            () -> new PlacedVesselBlock(BlockBehaviour.Properties.of()
+                    .instabreak().noCollission().noOcclusion().sound(SoundType.GLASS)
+                    .pushReaction(PushReaction.BLOCK),
+                    Shapes.box(0.3125, 0.0, 0.3125, 0.6875, 0.4375, 0.6875)));
+    public static final DeferredItem<Item> SHOT_GLASS_ITEM = BLOCK_ITEMS.register("shot_glass",
+            () -> new BlockItem(SHOT_GLASS.get(), new Item.Properties().stacksTo(16)));
+    /**
+     * The cup (чарка): a wider wooden cup for a bigger pour. Same behaviour as
+     * the shot glass, only a different vessel.
+     */
+    public static final DeferredBlock<Block> CUP = BLOCKS.register("cup",
+            () -> new PlacedVesselBlock(BlockBehaviour.Properties.of()
+                    .instabreak().noCollission().noOcclusion().sound(SoundType.WOOD)
+                    .pushReaction(PushReaction.BLOCK),
+                    Shapes.box(0.21875, 0.0, 0.21875, 0.78125, 0.375, 0.78125)));
+    public static final DeferredItem<Item> CUP_ITEM = BLOCK_ITEMS.register("cup",
+            () -> new BlockItem(CUP.get(), new Item.Properties().stacksTo(16)));
     /**
      * The merged 2x2x2 barrel. It has no item of its own: eight
      * {@link #AGING_CASK} blocks placed as a cube build it, and breaking it
@@ -139,6 +177,9 @@ public final class ModBlocks {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PlacedDrinkBlockEntity>> PLACED_DRINK_ENTITY =
             BLOCK_ENTITIES.register("placed_drink", () -> BlockEntityType.Builder.of(
                     PlacedDrinkBlockEntity::new, PLACED_DRINK.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PlacedVesselBlockEntity>> PLACED_VESSEL_ENTITY =
+            BLOCK_ENTITIES.register("placed_vessel", () -> BlockEntityType.Builder.of(
+                    PlacedVesselBlockEntity::new, SHOT_GLASS.get(), CUP.get()).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CondenserBlockEntity>> CONDENSER_ENTITY =
             BLOCK_ENTITIES.register("condenser", () -> BlockEntityType.Builder.of(
                     CondenserBlockEntity::new, CONDENSER.get()).build(null));
@@ -148,6 +189,9 @@ public final class ModBlocks {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<BreweryBlockEntity>> BREWERY_ENTITY =
             BLOCK_ENTITIES.register("brewery", () -> BlockEntityType.Builder.of(
                     BreweryBlockEntity::new, BREWERY.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<BanyaStoveBlockEntity>> BANYA_STOVE_ENTITY =
+            BLOCK_ENTITIES.register("banya_stove", () -> BlockEntityType.Builder.of(
+                    BanyaStoveBlockEntity::new, BANYA_STOVE.get()).build(null));
 
     private static DeferredBlock<Block> machine(String id, ProcessBlock.Kind kind) {
         DeferredBlock<Block> block = BLOCKS.register(id, () -> new ProcessBlock(machineProperties(), kind));

@@ -153,39 +153,21 @@ public final class ProcessBlock extends Block implements EntityBlock, ProcessMac
         double z = pos.getZ() + 0.5;
         int heat = state.getValue(HEAT);
 
-        // Finished machines are visible from a distance: a pulsing golden crown
-        // means "take the product", while an idle machine stays dark.
-        if (ready) {
-            if (random.nextInt(5) == 0) {
-                level.addParticle(ParticleTypes.END_ROD, x + spread(random, 0.32),
-                        pos.getY() + 1.05, z + spread(random, 0.32), 0, 0.018, 0);
-            }
-            if (random.nextInt(8) == 0) {
-                level.addParticle(ParticleTypes.ELECTRIC_SPARK, x + spread(random, 0.4),
-                        pos.getY() + 0.65, z + spread(random, 0.4), 0, 0.01, 0);
-            }
-            if (random.nextInt(110) == 0) {
-                level.playLocalSound(x, y + 0.8, z, SoundEvents.AMETHYST_BLOCK_CHIME,
-                        SoundSource.BLOCKS, 0.16f, 1.7f, false);
-            }
+        // A finished machine is signalled by its block state and a rare chime
+        // only. Sparkles above the machine were removed: white end-rod stars
+        // and even the golden wax replacement read as stray particles over the
+        // wooden models, and players asked for them to go.
+        if (ready && random.nextInt(110) == 0) {
+            level.playLocalSound(x, y + 0.8, z, SoundEvents.AMETHYST_BLOCK_CHIME,
+                    SoundSource.BLOCKS, 0.16f, 1.7f, false);
         }
         if (!active) return;
 
         switch (kind) {
             case MASHING -> {
-                if (heat > 0) {
-                    int rate = Math.max(2, 8 - progress);
-                    if (random.nextInt(rate) == 0) {
-                        level.addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
-                                x + spread(random, 0.38), pos.getY() + 0.04, z + spread(random, 0.38),
-                                0, 0.02, 0);
-                    }
-                    if (random.nextInt(14) == 0) {
-                        level.addParticle(ParticleTypes.SPORE_BLOSSOM_AIR,
-                                x + spread(random, 0.3), pos.getY() + 1.02, z + spread(random, 0.3),
-                                0, 0.015, 0);
-                    }
-                }
+                // No white smoke or spore puffs over the tun: the fire under it
+                // already reads as heat, and the big pale clouds looked like
+                // weather rather than a machine at work.
                 if (random.nextInt(90) == 0) {
                     level.playLocalSound(x, y, z, SoundEvents.FIRE_AMBIENT, SoundSource.BLOCKS,
                             0.25f, 0.85f + random.nextFloat() * 0.2f, false);
@@ -216,7 +198,7 @@ public final class ProcessBlock extends Block implements EntityBlock, ProcessMac
                             pos.getY() - 0.45, z + spread(random, 0.2), 0, 0.008, 0);
                 }
                 if (progress >= 1 && random.nextInt(16) == 0) {
-                    level.addParticle(ParticleTypes.CLOUD, x + spread(random, 0.18),
+                    level.addParticle(ParticleTypes.SMOKE, x + spread(random, 0.18),
                             pos.getY() + 1.02, z + spread(random, 0.18), 0, 0.012, 0);
                 }
                 if (random.nextInt(18) == 0) {
@@ -236,7 +218,7 @@ public final class ProcessBlock extends Block implements EntityBlock, ProcessMac
             case RECTIFIER -> {
                 int rate = Math.max(3, 12 - progress);
                 if (random.nextInt(rate) == 0) {
-                    level.addParticle(ParticleTypes.CLOUD, x + spread(random, 0.15),
+                    level.addParticle(ParticleTypes.SMOKE, x + spread(random, 0.15),
                             pos.getY() + 1.02, z + spread(random, 0.15), 0, 0.01, 0);
                 }
                 if (heat > 0 && random.nextInt(10) == 0) {

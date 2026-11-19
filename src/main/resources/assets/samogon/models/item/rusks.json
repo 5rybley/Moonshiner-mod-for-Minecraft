@@ -1,0 +1,62 @@
+{
+	"format_version": "26.3",
+	"credit": "Original voxel geometry and pixel textures for Moonshiner; kvass assets by Moonshiner",
+	"parent": "minecraft:block/block",
+	"texture_size": [16, 16],
+	"ambientocclusion": false,
+	"gui_light": "front",
+	"textures": {
+		"particle": "samogon:block/materials/grain",
+		"grain": "samogon:block/materials/grain",
+		"amber": "samogon:block/materials/amber",
+		"cream": "samogon:block/materials/cream",
+		"dark_wood": "samogon:block/materials/dark_wood"
+	},
+	"elements": [
+		{
+			"from": [3, 1, 3],
+			"to": [13, 4, 13],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#amber"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#amber"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#amber"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#amber"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#cream"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"}
+			}
+		},
+		{
+			"from": [3.5, 4, 3.5],
+			"to": [12.5, 7, 12.5],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#grain"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#grain"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#grain"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#grain"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#amber"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"}
+			}
+		},
+		{
+			"from": [4.5, 7, 4.5],
+			"to": [11.5, 9, 11.5],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#cream"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#cream"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#cream"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#cream"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#amber"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#dark_wood"}
+			}
+		}
+	],
+	"display": {
+		"gui": {"rotation": [25, 225, 0], "translation": [0, 0, 0], "scale": [0.95, 0.95, 0.95]},
+		"ground": {"rotation": [0, 0, 0], "translation": [0, 3, 0], "scale": [0.4, 0.4, 0.4]},
+		"fixed": {"rotation": [0, 180, 0], "translation": [0, 0, 0], "scale": [0.65, 0.65, 0.65]},
+		"thirdperson_righthand": {"rotation": [75, 45, 0], "translation": [0, 2.5, 0], "scale": [0.5, 0.5, 0.5]},
+		"thirdperson_lefthand": {"rotation": [75, 45, 0], "translation": [0, 2.5, 0], "scale": [0.5, 0.5, 0.5]},
+		"firstperson_righthand": {"rotation": [0, 45, 0], "translation": [0, 1, 0], "scale": [0.55, 0.55, 0.55]},
+		"firstperson_lefthand": {"rotation": [0, 225, 0], "translation": [0, 1, 0], "scale": [0.55, 0.55, 0.55]}
+	}
+}

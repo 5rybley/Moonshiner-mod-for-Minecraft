@@ -13,6 +13,7 @@ import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import ru.samogon.SamogonMod;
@@ -66,6 +67,18 @@ public final class IntoxicationEvents {
             applyHangover(player, peak);
         }
         Intoxication.clearPeak(player);
+    }
+
+    /**
+     * Death is the only cure for the fusel fog. Vanilla usually drops every
+     * effect on respawn, but a world that keeps the inventory would carry it
+     * over, so it is lifted here the moment the drinker dies.
+     */
+    @SubscribeEvent
+    public static void onLivingDeath(LivingDeathEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            player.removeEffect(ModEffects.FUSEL_BLINDNESS);
+        }
     }
 
     private static void applyHangover(ServerPlayer player, int peak) {

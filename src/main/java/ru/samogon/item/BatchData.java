@@ -43,11 +43,15 @@ public final class BatchData {
         boolean beer = stack.is(ModItems.BEER.get());
         boolean hopped = stack.is(ModItems.HOPPED_WORT.get());
         boolean beerWort = stack.is(ModItems.BEER_WORT.get());
-        if (beer || hopped || beerWort) {
+        boolean kvass = stack.is(ModItems.KVASS.get());
+        boolean kvassWort = stack.is(ModItems.KVASS_WORT.get());
+        if (beer || hopped || beerWort || kvass || kvassWort) {
             String origin = beer ? Brewing.BEER_ORIGIN
-                    : hopped ? Brewing.HOPPED_ORIGIN : Brewing.WORT_ORIGIN;
-            int quality = beer ? 72 : hopped ? 68 : 62;
-            int impurities = beer ? 8 : 0;
+                    : hopped ? Brewing.HOPPED_ORIGIN
+                    : kvass ? Brewing.KVASS_ORIGIN
+                    : kvassWort ? Brewing.KVASS_WORT_ORIGIN : Brewing.WORT_ORIGIN;
+            int quality = beer ? 72 : kvass ? 70 : hopped ? 68 : kvassWort ? 60 : 62;
+            int impurities = beer ? 8 : kvass ? 4 : 0;
             return new Batch(item.defaultVolume(), item.defaultAbv(), quality, impurities,
                     0, false, origin, 0);
         }

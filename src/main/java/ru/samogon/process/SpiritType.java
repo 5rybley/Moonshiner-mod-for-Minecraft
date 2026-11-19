@@ -70,6 +70,8 @@ public enum SpiritType {
     TINCTURE("tincture", true),
     /** Top-fermented grain beer, brewed only in the brewery multiblock. */
     BEER("beer", true),
+    /** Mild bread kvass, brewed in the brewery and fermented in the beer barrel. */
+    KVASS("kvass", true),
     /** Unfermented grape must from the wine press: an ingredient, not a drink. */
     MUST("grape_must", false),
     /** Dry still wine from the winery: red, white or rosé. */
@@ -148,8 +150,22 @@ public enum SpiritType {
         // A brew that has already been through a still or the column is a
         // spirit though, so it falls through and is classified by its grain.
         if (Brewing.isFinishedBeer(batch)) return BEER;
-        String origin = Brewing.isBeerOrigin(batch.origin())
-                ? Brewing.grainOf(batch.origin()) : batch.origin();
+        // Kvass follows the same rule: only undistilled kvass keeps its type.
+        if (Brewing.isFinishedKvass(batch)) return KVASS;
+        String origin;
+        if (Brewing.isBeerOrigin(batch.origin())) {
+            // Every beer grain distils into the same grain-spirit family: the
+            // mash tun records "grain" for malt, wheat and sugar alike, so a
+            // distilled barley, wheat or roasted-malt beer must classify as
+            // whiskey (or scotch after a second pass), not fall through to
+            // brandy or moonshine.
+            origin = "grain";
+        } else if (Brewing.isKvassOrigin(batch.origin())) {
+            // Distilled kvass counts as a grain spirit, not a beer.
+            origin = "grain";
+        } else {
+            origin = batch.origin();
+        }
         // A grape origin carries the colour and, for sparkling, the dosage
         // after the stage ("wine:red:brut"). Strip them so the family switch
         // below sees the plain raw material even after distillation.

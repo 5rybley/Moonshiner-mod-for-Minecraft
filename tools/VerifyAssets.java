@@ -15,10 +15,11 @@ public final class VerifyAssets {
     /** Blocks that are mined with a pickaxe; the rack joins them but has its own multipart blockstate. */
     static final List<String> PICKAXE = List.of("mash_tun", "fermentation_barrel", "beer_fermentation_barrel", "distiller",
             "reflux_column", "charcoal_filter", "dilution_basin", "blending_table", "aging_cask", "condenser",
-            "tasting_table", "wine_press", "bottle_rack", "brewery");
+            "tasting_table", "wine_press", "bottle_rack", "brewery", "banya_stove");
     static final List<String> BLOCKS = List.of("mash_tun", "fermentation_barrel", "beer_fermentation_barrel", "distiller",
             "reflux_column", "charcoal_filter", "dilution_basin", "blending_table", "aging_cask", "condenser",
-            "samogon_crate", "tasting_table", "wine_press", "bottle_rack", "brewery", "hops", "grape_vine");
+            "samogon_crate", "tasting_table", "wine_press", "bottle_rack", "brewery", "hops", "grape_vine",
+            "banya_stove", "shot_glass", "cup");
     /** Crops that are planted by seeds and have no block item of their own. */
     static final List<String> CROPS = List.of("grape_vine");
     /** Multi-block structures that are built in the world and have no item of their own. */
@@ -30,9 +31,9 @@ public final class VerifyAssets {
             "diluted_spirit", "berry_tincture", "honey_tincture", "botanical_tincture", "oak_aged_spirit",
             "spiced_tincture", "fruit_tincture", "marine_tincture", "brine",
             "artisan_samogon", "hops", "hops_seeds", "beer_wort", "hopped_wort", "beer",
-            "roasted_malt", "wooden_mug",
+            "roasted_malt", "wooden_mug", "rusks", "kvass_wort", "kvass",
             "yeast", "malt", "activated_charcoal", "botanical_bundle", "oak_chips", "molecular_sieve",
-            "thermometer", "hydrometer", "distillers_guide", "brewers_guide", "winemakers_guide",
+            "thermometer", "hydrometer", "besom", "distillers_guide", "brewers_guide", "winemakers_guide",
             "red_grapes", "white_grapes", "grape_must", "wine", "sparkling_wine",
             "cabernet_grapes", "merlot_grapes", "chardonnay_grapes", "riesling_grapes",
             "cabernet_seeds", "merlot_seeds", "chardonnay_seeds", "riesling_seeds");
@@ -233,6 +234,29 @@ public final class VerifyAssets {
             require(LANG_KEYS.contains("advancement.samogon." + advancement),
                     "missing advancement language key " + advancement);
         }
+
+        // The whole advancement tree is generated into src/generated/resources.
+        // Every file there must have both display keys in both languages and a
+        // parent that actually exists, so a renamed or newly added branch cannot
+        // ship as a blank tooltip or an orphaned tab.
+        Path advancements = Path.of("src/generated/resources/data/samogon/advancement");
+        List<Path> advancementFiles = files(advancements).stream()
+                .filter(path -> path.toString().endsWith(".json")).toList();
+        require(!advancementFiles.isEmpty(), "no generated advancements found");
+        for (Path file : advancementFiles) {
+            String name = file.getFileName().toString().replace(".json", "");
+            require(LANG_KEYS.contains("advancement.samogon." + name + ".title"),
+                    "missing advancement title " + name);
+            require(LANG_KEYS.contains("advancement.samogon." + name + ".description"),
+                    "missing advancement description " + name);
+            String json = read(file);
+            Matcher parent = Pattern.compile("\"parent\"\\s*:\\s*\"samogon:([a-z0-9_/]+)\"").matcher(json);
+            if (parent.find()) {
+                Path parentFile = advancements.resolve(parent.group(1) + ".json");
+                require(Files.exists(parentFile),
+                        "advancement " + name + " points at missing parent " + parent.group(1));
+            }
+        }
         for (String page : List.of("overview", "mash", "raw", "still", "clean", "dilute",
                 "blend", "age", "trouble", "memo")) {
             require(LANG_KEYS.contains("guide.samogon.page." + page + ".title"),
@@ -417,6 +441,8 @@ public final class VerifyAssets {
                 "illustrated guide parchment is missing");
         require(Files.exists(ASSETS.resolve("textures/gui/guide/icons.png")),
                 "illustrated guide icon sheet is missing");
+        require(Files.exists(ASSETS.resolve("textures/gui/banya_panel.png")),
+                "banya stove panel is missing");
         System.out.println("Asset verification passed: " + models + " models, " + modelItems.size()
                 + " item models, " + textures + " texture bindings, " + recipes + " recipes, "
                 + effects.size() + " effect icons, " + sounds.size() + " sounds, " + pngs + " material PNGs");

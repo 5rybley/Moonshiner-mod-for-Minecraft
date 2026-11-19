@@ -182,6 +182,22 @@ public final class ProductionChainTest {
         Batch wash = Simulation.mash("grain", 4);
         require(!Brewing.isBrew(wash), "ordinary mash must not be a brew");
         require(SpiritType.of(wash) != SpiritType.BEER, "ordinary mash must not be beer");
+
+        // Kvass: rusks and water steep into a mild wort, which the beer barrel
+        // ferments into a drink of about one percent alcohol.
+        Batch kvassWort = Brewing.kvassWort();
+        require(Brewing.isBrew(kvassWort), "kvass wort belongs to the brewery chain");
+        require(Brewing.stageOf(kvassWort) == Brewing.STAGE_KVASS_WORT, "kvass wort stage");
+        require(SpiritType.of(kvassWort) != SpiritType.KVASS,
+                "unfermented kvass wort is not a drink yet");
+        Batch kvass = Brewing.fermentKvass(kvassWort, 1.0, 22.0);
+        require(Brewing.isFinishedKvass(kvass), "fermented kvass wort must give kvass");
+        require(SpiritType.of(kvass) == SpiritType.KVASS, "kvass must classify as kvass");
+        require(kvass.abv() > 0.5 && kvass.abv() < 2.5, "kvass strength must stay mild");
+        System.out.printf(Locale.ROOT,
+                "kvass chain: wort %.0f ml | kvass %.0f ml @ %.1f%% | quality %d%n",
+                kvassWort.volume(), kvass.volume(), kvass.abv(), kvass.quality());
+
         System.out.printf(Locale.ROOT,
                 "brewery chain: wort %.0f ml | hopped %.0f ml | beer %.0f ml @ %.1f%% | quality %d"
                         + " | styles %s %s %s%n",

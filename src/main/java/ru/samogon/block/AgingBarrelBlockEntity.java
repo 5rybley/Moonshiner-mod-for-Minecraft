@@ -4,7 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.particles.ParticleTypes;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -328,9 +328,10 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
     }
 
     private void celebrate(ServerLevel server) {
-        server.sendParticles(ParticleTypes.END_ROD,
-                worldPosition.getX() + 1.0, worldPosition.getY() + 1.0, worldPosition.getZ() + 1.0,
-                12, 0.8, 0.2, 0.8, 0.01);
+        // The cask chimes when a bottle is ready. It used to throw a burst of
+        // white end-rod stars as well; they lingered over the barrel until the
+        // bottle was taken out, so the particles are gone and only the sound
+        // marks the moment.
         server.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME,
                 SoundSource.BLOCKS, 0.45f, 1.4f);
     }

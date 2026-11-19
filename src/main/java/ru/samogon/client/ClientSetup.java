@@ -5,10 +5,12 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import ru.samogon.SamogonMod;
+import ru.samogon.block.PlacedVesselBlock;
 import ru.samogon.registry.ModBlocks;
 import ru.samogon.registry.ModEntityTypes;
 import ru.samogon.registry.ModMenus;
@@ -31,6 +33,7 @@ public final class ClientSetup {
         event.register(ModMenus.PROCESS.get(), ProcessScreen::new);
         event.register(ModMenus.AGING_BARREL.get(), AgingBarrelScreen::new);
         event.register(ModMenus.BREWERY.get(), BreweryScreen::new);
+        event.register(ModMenus.BANYA_STOVE.get(), BanyaStoveScreen::new);
     }
 
     @SubscribeEvent
@@ -44,5 +47,17 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void registerClientExtensions(RegisterClientExtensionsEvent event) {
         event.registerItem(CRATE_ITEM_EXTENSIONS, ModBlocks.SAMOGON_CRATE_ITEM.get());
+    }
+
+    /**
+     * Tints the liquid element of a filled shot glass or cup by the drink inside
+     * it: clear for spirits, gold for beer and white wine, red for red wine and
+     * brown for kvass or stout.
+     */
+    @SubscribeEvent
+    public static void registerBlockColors(RegisterColorHandlersEvent.Block event) {
+        event.register((state, level, pos, tintIndex) -> tintIndex == 0
+                        ? state.getValue(PlacedVesselBlock.LIQUID).color() : 0xFFFFFFFF,
+                ModBlocks.SHOT_GLASS.get(), ModBlocks.CUP.get());
     }
 }

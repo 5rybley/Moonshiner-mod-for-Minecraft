@@ -91,9 +91,15 @@ public enum WineStyle implements WineRecipe {
         return "guide.samogon.winemaker.recipe." + key + ".name";
     }
 
+    /** Historical note shown both on a bottle and in the winemaker's recipe list. */
     @Override
     public String descriptionKey() {
-        return "guide.samogon.winemaker.recipe." + key + ".desc";
+        return "desc.samogon.wine." + key;
+    }
+
+    /** Historical note shown on a bottle of this style, not a recipe hint. */
+    public String historyKey() {
+        return descriptionKey();
     }
 
     @Override

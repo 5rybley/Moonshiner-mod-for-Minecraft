@@ -311,8 +311,23 @@ public final class WinemakersGuideScreen extends Screen {
                         active ? COPPER_DARK : INK, false);
             }
             int originY = y + 1 + Math.min(2, nameLines.size()) * 9 + 1;
-            g.drawString(this.font, Component.translatable(colourOriginKey(variety)),
-                    LIST_X + 24, originY, SOFT, false);
+            // Wrap the origin line exactly like the recipe list does: a long
+            // "red grapes, cabernet..." used to run into the divider and be
+            // cut mid-word, and two wrapped lines under a two-line name would
+            // spill into the next entry. A name that already took both of its
+            // lines leaves the origin a single ellipsised line.
+            List<String> originLines = wrapText(
+                    Component.translatable(colourOriginKey(variety)).getString(), LIST_W - 26);
+            int originRows = nameLines.size() >= 2 ? 1 : 2;
+            for (int line = 0; line < originLines.size() && line < originRows; line++) {
+                String text = originLines.get(line);
+                if (line == originRows - 1 && originLines.size() > originRows) {
+                    String dots = "\u2026";
+                    text = this.font.plainSubstrByWidth(text, LIST_W - 26 - this.font.width(dots))
+                            .stripTrailing() + dots;
+                }
+                g.drawString(this.font, text, LIST_X + 24, originY + line * 9, SOFT, false);
+            }
         }
         g.disableScissor();
         drawScrollbar(g, LIST_X + LIST_W + 1, LIST_TOP, LIST_BOTTOM, listScroll, listMaxScroll);

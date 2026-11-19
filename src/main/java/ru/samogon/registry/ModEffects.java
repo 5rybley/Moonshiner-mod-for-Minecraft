@@ -6,7 +6,9 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import ru.samogon.SamogonMod;
+import ru.samogon.effect.AfterBanyaEffect;
 import ru.samogon.effect.ClearHeadEffect;
+import ru.samogon.effect.FuselBlindnessEffect;
 import ru.samogon.effect.HangoverEffect;
 import ru.samogon.effect.IntoxicationEffect;
 
@@ -44,9 +46,20 @@ public final class ModEffects {
     /** The morning after: a queasy, aching debuff left by a heavy session. */
     public static final DeferredHolder<MobEffect, MobEffect> HANGOVER =
             EFFECTS.register("hangover", HangoverEffect::new);
+    /**
+     * Drinking the heads or tails fraction leaves the drinker blind for five
+     * minutes. Unlike ordinary blindness, milk cannot lift it: it only passes
+     * with time or with death.
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> FUSEL_BLINDNESS =
+            EFFECTS.register("fusel_blindness", FuselBlindnessEffect::new);
     /** The short clarity that follows a glass of brine. */
     public static final DeferredHolder<MobEffect, MobEffect> CLEAR_HEAD =
             EFFECTS.register("clear_head", ClearHeadEffect::new);
+
+    /** The easy, warm body left behind by a proper session in the banya. */
+    public static final DeferredHolder<MobEffect, MobEffect> AFTER_BANYA =
+            EFFECTS.register("after_banya", AfterBanyaEffect::new);
 
     /** Hidden marker that remembers which tincture the player last drank. */
     public static final DeferredHolder<MobEffect, MobEffect> TINCTURE_MARK =

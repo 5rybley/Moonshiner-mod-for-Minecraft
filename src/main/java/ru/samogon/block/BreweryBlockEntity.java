@@ -61,6 +61,8 @@ public final class BreweryBlockEntity extends BlockEntity {
 
     public static final int MASH_TICKS = 400;
     public static final int BOIL_TICKS = 600;
+    /** Soaking rusks in water: the kvass wort step. */
+    public static final int KVASS_TICKS = 400;
 
     private final SimpleContainer inventory = new SimpleContainer(SLOT_COUNT) {
         @Override
@@ -103,7 +105,7 @@ public final class BreweryBlockEntity extends BlockEntity {
         }
     };
 
-    /** Selected process tab: 0 mash, 1 boil. */
+    /** Selected process tab: 0 mash, 1 boil, 2 kvass. */
     private int tab;
     /** The liquid inside the vessel, at any brewing stage. */
     private Batch brew;
@@ -145,7 +147,7 @@ public final class BreweryBlockEntity extends BlockEntity {
 
     /** Switches the selected step. A running step cannot be changed. */
     public boolean setTab(int newTab) {
-        if (running || newTab < 0 || newTab > 1 || newTab == tab) return false;
+        if (running || newTab < 0 || newTab > 2 || newTab == tab) return false;
         tab = newTab;
         setChanged();
         return true;
@@ -185,7 +187,10 @@ public final class BreweryBlockEntity extends BlockEntity {
         Batch batch = readBatch(input);
         if (batch == null || !Brewing.isBrew(batch)) return;
         int step = Brewing.stageOf(batch);
-        if (step != Brewing.STAGE_WORT && step != Brewing.STAGE_HOPPED) return;
+        if (step != Brewing.STAGE_WORT && step != Brewing.STAGE_HOPPED
+                && step != Brewing.STAGE_KVASS_WORT) {
+            return;
+        }
         brew = batch;
         consumeSlot(SLOT_INPUT);
         returnContainer(Items.GLASS_BOTTLE);
@@ -196,6 +201,7 @@ public final class BreweryBlockEntity extends BlockEntity {
         switch (tab) {
             case 0 -> tryStartMash();
             case 1 -> tryStartBoil();
+            case 2 -> tryStartKvass();
             default -> {
             }
         }
@@ -222,6 +228,21 @@ public final class BreweryBlockEntity extends BlockEntity {
         begin(BOIL_TICKS);
     }
 
+    /**
+     * The kvass step soaks bread rusks in water. It reuses the mash pattern:
+     * rusks in the input slot, a water bucket in the additive slot, and no fire
+     * under the kettle.
+     */
+    private void tryStartKvass() {
+        if (brew != null) return;
+        if (!inventory.getItem(SLOT_INPUT).is(ModItems.RUSKS.get())) return;
+        if (!inventory.getItem(SLOT_ADDITIVE).is(Items.WATER_BUCKET)) return;
+        consumeSlot(SLOT_INPUT);
+        consumeSlot(SLOT_ADDITIVE);
+        returnContainer(Items.BUCKET);
+        begin(KVASS_TICKS);
+    }
+
     private void begin(int ticks) {
         running = true;
         progress = 0;
@@ -241,9 +262,24 @@ public final class BreweryBlockEntity extends BlockEntity {
                 if (progress >= duration) completeMash();
             }
             case 1 -> {
-                if (Environment.heatStrength(level, worldPosition.below()) <= 0) return;
+                if (Environment.heatStrength(level, worldPosition.below()) <= 0) {
+                    // The fire went out mid-boil. Stop the run instead of
+                    // leaving running=true forever: otherwise the tab cannot be
+                    // switched and the vessel cannot be bottled, and the only
+                    // way out is to relight the fire or break the block.
+                    // The wort stays in the vessel and can be boiled again.
+                    // The hops were taken when the boil started, so they go back:
+                    // the player should not pay for a boil the fire never finished.
+                    refundHops();
+                    finishRun();
+                    return;
+                }
                 progress++;
                 if (progress >= duration) completeBoil();
+            }
+            case 2 -> {
+                progress++;
+                if (progress >= duration) completeKvassWort();
             }
             default -> {
             }
@@ -265,9 +301,17 @@ public final class BreweryBlockEntity extends BlockEntity {
         }
         brew = Brewing.boil(brew);
         finishRun();
-        burst(ParticleTypes.CLOUD, 16, 0.3, 0.02);
+        burst(ParticleTypes.SMOKE, 16, 0.3, 0.02);
         level.playSound(null, worldPosition, SoundEvents.BREWING_STAND_BREW,
                 SoundSource.BLOCKS, 0.6f, 1.15f);
+    }
+
+    private void completeKvassWort() {
+        brew = Brewing.kvassWort();
+        finishRun();
+        burst(ParticleTypes.SPLASH, 12, 0.35, 0.02);
+        level.playSound(null, worldPosition, SoundEvents.BREWING_STAND_BREW,
+                SoundSource.BLOCKS, 0.5f, 1.25f);
     }
 
     private void finishRun() {
@@ -306,13 +350,12 @@ public final class BreweryBlockEntity extends BlockEntity {
 
     /**
      * The empty vessel required at the output slot for each stage. Wort leaves
-     * in a glass bottle; the mug case only drains a batch left over from an
-     * older world where the brewery still fermented beer itself.
+     * in a glass bottle; beer and the last kvass stage leave in a wooden mug.
      */
     private static Item containerFor(int stage) {
         return switch (stage) {
-            case Brewing.STAGE_WORT, Brewing.STAGE_HOPPED -> Items.GLASS_BOTTLE;
-            case Brewing.STAGE_BEER -> ModItems.WOODEN_MUG.get();
+            case Brewing.STAGE_WORT, Brewing.STAGE_HOPPED, Brewing.STAGE_KVASS_WORT -> Items.GLASS_BOTTLE;
+            case Brewing.STAGE_BEER, Brewing.STAGE_KVASS -> ModItems.WOODEN_MUG.get();
             default -> null;
         };
     }
@@ -322,6 +365,8 @@ public final class BreweryBlockEntity extends BlockEntity {
             case Brewing.STAGE_WORT -> ModItems.BEER_WORT.get();
             case Brewing.STAGE_HOPPED -> ModItems.HOPPED_WORT.get();
             case Brewing.STAGE_BEER -> ModItems.BEER.get();
+            case Brewing.STAGE_KVASS_WORT -> ModItems.KVASS_WORT.get();
+            case Brewing.STAGE_KVASS -> ModItems.KVASS.get();
             default -> null;
         };
     }
@@ -374,6 +419,7 @@ public final class BreweryBlockEntity extends BlockEntity {
         return switch (tab) {
             case 0 -> true;
             case 1 -> Environment.heatStrength(level, worldPosition.below()) > 0;
+            case 2 -> true;
             default -> false;
         };
     }
@@ -454,6 +500,24 @@ public final class BreweryBlockEntity extends BlockEntity {
         Block.popResource(level, worldPosition, new ItemStack(container));
     }
 
+    /**
+     * Hands back the hop charge of a boil that stopped because the fire went
+     * out. The wort is still unhopped, so charging for that run would silently
+     * eat one hop every time a campfire or firebox runs dry mid-boil.
+     */
+    private void refundHops() {
+        ItemStack hops = new ItemStack(ModItems.HOPS.get());
+        ItemStack slot = inventory.getItem(SLOT_ADDITIVE);
+        if (slot.isEmpty()) {
+            inventory.setItem(SLOT_ADDITIVE, hops);
+        } else if (slot.is(ModItems.HOPS.get()) && slot.getCount() < slot.getMaxStackSize()) {
+            slot.grow(1);
+            inventory.setChanged();
+        } else if (level != null) {
+            Block.popResource(level, worldPosition, hops);
+        }
+    }
+
     // === PERSISTENCE ===
 
     @Override
@@ -473,11 +537,11 @@ public final class BreweryBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        tab = Math.max(0, Math.min(1, tag.getInt("Tab")));
+        tab = Math.max(0, Math.min(2, tag.getInt("Tab")));
         // A world saved while the brewery still ran a fermentation step may
-        // hold running=true with the old tab 2; there is no such step anymore,
+        // hold running=true with the old tab 3; there is no such step anymore,
         // so let the vessel settle instead of boiling or mashing by mistake.
-        running = tag.getBoolean("Running") && tag.getInt("Tab") <= 1;
+        running = tag.getBoolean("Running") && tag.getInt("Tab") <= 2;
         progress = Math.max(0, tag.getInt("Progress"));
         duration = Math.max(0, tag.getInt("Duration"));
         temperature = tag.contains("Temperature") ? tag.getDouble("Temperature") : 20;

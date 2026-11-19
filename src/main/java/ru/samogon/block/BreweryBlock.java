@@ -2,7 +2,7 @@ package ru.samogon.block;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.particles.ParticleTypes;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -256,30 +256,16 @@ public final class BreweryBlock extends Block implements EntityBlock {
 
     @Override
     public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
-        boolean active = state.getValue(ACTIVE);
-        boolean ready = state.getValue(READY);
-        if (!active && !ready) return;
+        if (!state.getValue(ACTIVE)) return;
         double x = pos.getX() + 0.5;
         double z = pos.getZ() + 0.5;
-        if (active) {
-            if (random.nextInt(3) == 0) {
-                level.addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
-                        x + spread(random, 0.7), pos.getY() + 1.02, z + spread(random, 0.7),
-                        0, 0.02, 0);
-            }
-            if (random.nextInt(18) == 0) {
-                level.playLocalSound(x, pos.getY() + 0.6, z, SoundEvents.BREWING_STAND_BREW,
-                        SoundSource.BLOCKS, 0.18f, 1.15f, false);
-            }
+        // The brewery no longer breathes big white campfire clouds or sparkles
+        // when a batch is ready: the four parts each emitted them, which buried
+        // the machine in pale weather. The brew sound and the block state carry
+        // the work now.
+        if (random.nextInt(18) == 0) {
+            level.playLocalSound(x, pos.getY() + 0.6, z, SoundEvents.BREWING_STAND_BREW,
+                    SoundSource.BLOCKS, 0.18f, 1.15f, false);
         }
-        if (ready && random.nextInt(6) == 0) {
-            level.addParticle(ParticleTypes.END_ROD,
-                    x + spread(random, 0.6), pos.getY() + 1.05, z + spread(random, 0.6),
-                    0, 0.015, 0);
-        }
-    }
-
-    private static double spread(RandomSource random, double radius) {
-        return (random.nextDouble() - 0.5) * 2 * radius;
     }
 }

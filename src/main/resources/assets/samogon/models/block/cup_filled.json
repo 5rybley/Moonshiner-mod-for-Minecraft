@@ -1,0 +1,92 @@
+{
+	"format_version": "26.3",
+	"credit": "Original voxel geometry and pixel textures for Moonshiner; vessels by Moonshiner",
+	"parent": "minecraft:block/block",
+	"ambientocclusion": false,
+	"textures": {
+		"particle": "samogon:block/materials/oak",
+		"oak": "samogon:block/materials/oak",
+		"oak_light": "samogon:block/materials/oak_light",
+		"oak_end": "samogon:block/materials/oak_end",
+		"liquid": "samogon:block/materials/vessel_liquid",
+		"liquid_top": "samogon:block/materials/vessel_liquid_top"
+	},
+	"elements": [
+		{
+			"from": [4.5, 0, 4.5],
+			"to": [11.5, 1.2, 11.5],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#oak_end"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#oak_end"}
+			}
+		},
+		{
+			"from": [4.5, 1.2, 4.5],
+			"to": [11.5, 6, 5.4],
+			"rotation": {"angle": 0, "axis": "y", "origin": [0, 0, 1]},
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#oak"}
+			}
+		},
+		{
+			"from": [4.5, 1.2, 10.6],
+			"to": [11.5, 6, 11.5],
+			"rotation": {"angle": 0, "axis": "y", "origin": [0, 0, -1]},
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#oak"}
+			}
+		},
+		{
+			"from": [4.5, 1.2, 5.4],
+			"to": [5.4, 6, 10.6],
+			"rotation": {"angle": 0, "axis": "y", "origin": [1, 0, 0]},
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#oak"}
+			}
+		},
+		{
+			"from": [10.6, 1.2, 5.4],
+			"to": [11.5, 6, 10.6],
+			"rotation": {"angle": 0, "axis": "y", "origin": [-1, 0, 0]},
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#oak"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#oak_light"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#oak"}
+			}
+		},
+		{
+			"from": [5.4, 1.2, 5.4],
+			"to": [10.6, 5, 10.6],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#liquid", "tintindex": 0},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#liquid", "tintindex": 0},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#liquid", "tintindex": 0},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#liquid", "tintindex": 0},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#liquid_top", "tintindex": 0},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#liquid", "tintindex": 0}
+			}
+		}
+	]
+}

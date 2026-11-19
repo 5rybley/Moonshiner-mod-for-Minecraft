@@ -51,9 +51,15 @@ public enum SparklingStyle implements WineRecipe {
         return "guide.samogon.winemaker.recipe." + key + ".name";
     }
 
+    /** Historical note shown both on a bottle and in the winemaker's recipe list. */
     @Override
     public String descriptionKey() {
-        return "guide.samogon.winemaker.recipe." + key + ".desc";
+        return "desc.samogon.sparkling." + key;
+    }
+
+    /** Historical note shown on a bottle of this sparkling style. */
+    public String historyKey() {
+        return descriptionKey();
     }
 
     @Override

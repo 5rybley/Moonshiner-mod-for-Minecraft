@@ -71,7 +71,16 @@ public final class SpiritTypeTest {
         expect(SpiritType.COGNAC, batch(40, 2, false, "berry", 1, "honey_bottle", false, true), "oak berry blend stays cognac");
         expect(SpiritType.SPIRIT, batch(40, 2, true, "grain", 1, "", true, true), "oak-aged rectified spirit");
 
-// Raw-material potential is exposed without any Minecraft types.
+// A distilled beer keeps the beer stage in its origin but is a grain spirit,
+        // classified by that grain rather than falling through to brandy.
+        expect(SpiritType.WHISKEY, batch(40, 1, false, "beer:barley:none:ale", 1, "", false, true),
+                "distilled barley beer is whiskey");
+        expect(SpiritType.SCOTCH, batch(40, 2, false, "beer:roasted:none:ale", 1, "", false, true),
+                "twice-distilled beer is scotch");
+        expect(SpiritType.MOONSHINE, batch(40, 1, false, "beer:wheat:none:lager", 0, "", false, true),
+                "unaged distilled beer is a white grain spirit");
+
+        // Raw-material potential is exposed without any Minecraft types.
         require(SpiritType.potentialKey("grain").equals("potential.samogon.grain"),
                 "grain potential key");
         require(SpiritType.potentialKey("potato").equals("potential.samogon.potato"),

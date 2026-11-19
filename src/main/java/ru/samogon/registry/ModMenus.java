@@ -8,6 +8,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import ru.samogon.SamogonMod;
 import ru.samogon.block.ProcessBlock;
 import ru.samogon.menu.AgingBarrelMenu;
+import ru.samogon.menu.BanyaStoveMenu;
 import ru.samogon.menu.BreweryMenu;
 import ru.samogon.menu.ProcessMenu;
 
@@ -31,6 +32,10 @@ public final class ModMenus {
     public static final DeferredHolder<MenuType<?>, MenuType<BreweryMenu>> BREWERY =
             MENUS.register("brewery", () -> IMenuTypeExtension.create((id, inventory, data) ->
                     BreweryMenu.client(id, inventory, data.readBlockPos())));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<BanyaStoveMenu>> BANYA_STOVE =
+            MENUS.register("banya_stove", () -> IMenuTypeExtension.create((id, inventory, data) ->
+                    BanyaStoveMenu.client(id, inventory, data.readBlockPos())));
 
     private ModMenus() {}
 }

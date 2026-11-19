@@ -8,6 +8,7 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import ru.samogon.SamogonMod;
 import ru.samogon.item.BatchItem;
+import ru.samogon.item.BesomItem;
 import ru.samogon.item.BrineItem;
 import ru.samogon.item.GrapeSeedItem;
 import ru.samogon.item.GuideItem;
@@ -35,6 +36,12 @@ public final class ModItems {
     public static final DeferredItem<Item> HOPS_SEEDS = ITEMS.registerItem("hops_seeds",
             props -> new ItemNameBlockItem(ModBlocks.HOPS.get(), props), new Item.Properties());
     public static final DeferredItem<Item> THERMOMETER = tool("thermometer");
+    /**
+     * Birch banya besom: a light, fast weapon that slaps with a hiss of steam
+     * and wears out as the leaves are stripped away.
+     */
+    public static final DeferredItem<Item> BESOM = ITEMS.registerItem("besom",
+            BesomItem::new, new Item.Properties().durability(96).attributes(BesomItem.createAttributes()));
     public static final DeferredItem<HydrometerItem> HYDROMETER = ITEMS.registerItem("hydrometer",
             HydrometerItem::new, new Item.Properties().stacksTo(1));
     public static final DeferredItem<GuideItem> GUIDE = ITEMS.registerItem("distillers_guide", GuideItem::new,
@@ -47,9 +54,9 @@ public final class ModItems {
             new Item.Properties().stacksTo(1));
     public static final DeferredItem<BatchItem> SWEET_WORT = batch("sweet_wort", 0, false, 1000);
     public static final DeferredItem<BatchItem> FERMENTED_MASH = batch("fermented_mash", 12, true, 1000);
-    public static final DeferredItem<BatchItem> HEADS_FRACTION = technical("heads_fraction", 70);
+    public static final DeferredItem<BatchItem> HEADS_FRACTION = technical("heads_fraction", 70, true);
     public static final DeferredItem<BatchItem> HEARTS_FRACTION = batch("hearts_fraction", 55, true, 100);
-    public static final DeferredItem<BatchItem> TAILS_FRACTION = technical("tails_fraction", 20);
+    public static final DeferredItem<BatchItem> TAILS_FRACTION = technical("tails_fraction", 20, true);
     public static final DeferredItem<BatchItem> NEUTRAL_SPIRIT = technical("neutral_spirit", 96);
     public static final DeferredItem<BatchItem> ANHYDROUS_SPIRIT = technical("anhydrous_spirit", 99.5);
     public static final DeferredItem<BatchItem> FILTERED_SPIRIT = batch("filtered_spirit", 55, true, 100);
@@ -84,6 +91,19 @@ public final class ModItems {
     /** Finished beer, served in a wooden mug; drinking returns the empty mug. */
     public static final DeferredItem<BatchItem> BEER =
             ITEMS.registerItem("beer", props -> new BatchItem(props, Brewing.BEER_ABV, true, 500)
+                    .withContainer(WOODEN_MUG::get), new Item.Properties().stacksTo(1));
+
+    // Kvass chain: dried bread rusks are soaked in the brewery and the wort is
+    // fermented in the beer barrel, exactly like a real bread kvass.
+    /** Dried bread rusks: the bread charge of kvass. */
+    public static final DeferredItem<Item> RUSKS = ITEMS.registerSimpleItem("rusks",
+            new Item.Properties().stacksTo(64));
+    /** Rusks soaked in water, ready for the beer barrel. */
+    public static final DeferredItem<BatchItem> KVASS_WORT =
+            batch("kvass_wort", 0, false, Brewing.WORT_VOLUME);
+    /** Finished bread kvass, about 1 % ABV, served in a wooden mug like beer. */
+    public static final DeferredItem<BatchItem> KVASS =
+            ITEMS.registerItem("kvass", props -> new BatchItem(props, Brewing.KVASS_ABV, true, 500)
                     .withContainer(WOODEN_MUG::get), new Item.Properties().stacksTo(1));
 
     // Winery chain. Four grape varieties are grown in the vineyard; the press
@@ -183,8 +203,18 @@ public final class ModItems {
     }
 
     private static DeferredItem<BatchItem> technical(String id, double strength) {
+        return technical(id, strength, false);
+    }
+
+    /**
+     * A technical fraction. Heads and tails are {@code fusel}: drinking one
+     * leaves the five-minute blindness that milk cannot lift, which teaches the
+     * player that they are for distilling, not for drinking.
+     */
+    private static DeferredItem<BatchItem> technical(String id, double strength, boolean fusel) {
         return ITEMS.registerItem(id,
-                props -> new BatchItem(props, strength, false, 100, BatchItem.Tincture.NONE, true),
+                props -> new BatchItem(props, strength, false, 100, BatchItem.Tincture.NONE, true)
+                        .withFusel(fusel),
                 new Item.Properties().stacksTo(1));
     }
 

@@ -1,0 +1,18 @@
+{"variants":{
+  "filled=false,liquid=empty":{"model":"samogon:block/cup_empty"},
+  "filled=false,liquid=clear":{"model":"samogon:block/cup_empty"},
+  "filled=false,liquid=gold":{"model":"samogon:block/cup_empty"},
+  "filled=false,liquid=amber":{"model":"samogon:block/cup_empty"},
+  "filled=false,liquid=red":{"model":"samogon:block/cup_empty"},
+  "filled=false,liquid=rose":{"model":"samogon:block/cup_empty"},
+  "filled=false,liquid=brown":{"model":"samogon:block/cup_empty"},
+  "filled=false,liquid=green":{"model":"samogon:block/cup_empty"},
+  "filled=true,liquid=empty":{"model":"samogon:block/cup_filled"},
+  "filled=true,liquid=clear":{"model":"samogon:block/cup_filled"},
+  "filled=true,liquid=gold":{"model":"samogon:block/cup_filled"},
+  "filled=true,liquid=amber":{"model":"samogon:block/cup_filled"},
+  "filled=true,liquid=red":{"model":"samogon:block/cup_filled"},
+  "filled=true,liquid=rose":{"model":"samogon:block/cup_filled"},
+  "filled=true,liquid=brown":{"model":"samogon:block/cup_filled"},
+  "filled=true,liquid=green":{"model":"samogon:block/cup_filled"}
+}}

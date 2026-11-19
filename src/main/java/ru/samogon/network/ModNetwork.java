@@ -15,6 +15,7 @@ public final class ModNetwork {
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar("1");
         registrar.playToClient(BlackoutPayload.TYPE, BlackoutPayload.STREAM_CODEC, BlackoutPayload::handle);
+        registrar.playToClient(BanyaSteamPayload.TYPE, BanyaSteamPayload.STREAM_CODEC, BanyaSteamPayload::handle);
         registrar.playToClient(RecipePayload.TYPE, RecipePayload.STREAM_CODEC, RecipePayload::handle);
     }
 }

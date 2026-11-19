@@ -208,7 +208,12 @@ public final class ProcessMenu extends AbstractContainerMenu {
             if (batch == null) return false;
             return switch (kind) {
                 case FERMENTATION -> batch.abv() <= 0.5 && !Brewing.isBrew(batch);
-                case BEER_FERMENTATION -> Brewing.stageOf(batch) == Brewing.STAGE_HOPPED;
+                // The beer barrel takes hopped brewer's wort as well as the
+                // bread kvass wort, which also ferments there.
+                case BEER_FERMENTATION -> {
+                    int step = Brewing.stageOf(batch);
+                    yield step == Brewing.STAGE_HOPPED || step == Brewing.STAGE_KVASS_WORT;
+                }
                 case DISTILLER -> batch.abv() >= 1 && batch.volume() >= 100;
                 case RECTIFIER -> batch.abv() >= 1 && batch.volume() >= 10;
                 case FILTER -> batch.abv() >= 1;
@@ -274,10 +279,9 @@ public final class ProcessMenu extends AbstractContainerMenu {
     }
 
     /**
-     * The empty vessel the output slot may hold. Beer is only ever served in a
-     * wooden mug and spirits only in a glass bottle, so the slot follows the
-     * machine: the beer barrel takes mugs, the blending table takes both (a
-     * blended brew leaves in a mug) and every other machine takes bottles.
+     * The empty vessel the output slot may hold. Beer and bread kvass are both
+     * served in a wooden mug, so the beer barrel takes mugs; spirits only ever
+     * leave in glass bottles.
      */
     public static boolean isOutputContainer(ProcessBlock.Kind kind, ItemStack stack) {
         if (kind == ProcessBlock.Kind.BEER_FERMENTATION) {

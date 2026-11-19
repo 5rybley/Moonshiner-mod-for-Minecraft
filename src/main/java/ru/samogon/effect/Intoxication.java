@@ -25,6 +25,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 import ru.samogon.entity.PukeBlockEntity;
+import ru.samogon.config.SamogonConfig;
 import ru.samogon.item.BatchItem;
 import ru.samogon.network.BlackoutPayload;
 import ru.samogon.process.AromaFamily;
@@ -42,6 +43,12 @@ import java.util.Map;
  */
 public final class Intoxication {
     public static final int MAX_LEVEL = 5;
+
+    /**
+     * How long a glass of heads or tails keeps the drinker blind: five minutes.
+     * Milk cannot cut it short; only death can.
+     */
+    public static final int FUSEL_BLINDNESS_TICKS = 20 * 60 * 5;
 
     /** Client-side fade-in; the teleport waits for the screen to be dark. */
     private static final int BLACKOUT_FADE_TICKS = 12;
@@ -148,18 +155,29 @@ public final class Intoxication {
      * each further drink raises the level by one, up to V.
      */
     public static void drink(Player player, Batch batch, BatchItem.Tincture tincture) {
-        drink(player, batch, tincture, false);
+        drink(player, batch, tincture, false, false);
     }
 
     public static void drink(Player player, Batch batch, BatchItem.Tincture tincture, boolean technical) {
-        drink(player, batch, aurasFor(batch, tincture), technical);
+        drink(player, batch, tincture, technical, false);
+    }
+
+    /** One drink; {@code fusel} marks the heads and tails fractions. */
+    public static void drink(Player player, Batch batch, BatchItem.Tincture tincture,
+                             boolean technical, boolean fusel) {
+        drink(player, batch, aurasFor(batch, tincture), technical, fusel);
+    }
+
+    public static void drink(Player player, Batch batch, Map<String, Integer> auras, boolean technical) {
+        drink(player, batch, auras, technical, false);
     }
 
     /**
      * Applies one drink with an explicit aura map. The map may hold up to five
      * auras, each at the strength contributed by the blend.
      */
-    public static void drink(Player player, Batch batch, Map<String, Integer> auras, boolean technical) {
+    public static void drink(Player player, Batch batch, Map<String, Integer> auras,
+                             boolean technical, boolean fusel) {
         if (!(player instanceof ServerPlayer server) || player.level().isClientSide()) {
             return;
         }
@@ -201,7 +219,7 @@ public final class Intoxication {
                 0.95F + server.getRandom().nextFloat() * 0.12F);
 
         if (technical) {
-            applyTechnicalDebuffs(server, batch);
+            applyTechnicalDebuffs(server, batch, fusel);
             server.displayClientMessage(Component.translatable("message.samogon.technical_drink"), false);
         }
     }
@@ -386,7 +404,7 @@ public final class Intoxication {
         return Math.min(4, level);
     }
 
-    private static void applyTechnicalDebuffs(ServerPlayer player, Batch batch) {
+    private static void applyTechnicalDebuffs(ServerPlayer player, Batch batch, boolean fusel) {
         int abv = (int) Math.round(batch.abv());
         int impurityPenalty = Math.max(0, batch.impurities() - batch.quality() / 2);
         int severity = Math.max(1, Math.min(100, abv + impurityPenalty / 4));
@@ -397,8 +415,21 @@ public final class Intoxication {
 
         player.addEffect(new MobEffectInstance(
                 MobEffects.POISON, poisonTicks, severity >= 85 ? 1 : 0, true, true, true));
-        player.addEffect(new MobEffectInstance(
-                MobEffects.BLINDNESS, blindnessTicks, 0, true, true, true));
+        if (fusel) {
+            // Heads and tails: a five-minute fog that milk cannot lift and only
+            // death can cut short. It replaces the ordinary short blindness, so
+            // the drinker is not blinded twice over. Nothing is said out loud:
+            // the effect itself is how the player learns the lesson. The length
+            // is configurable and 0 removes the fog but keeps the other debuffs.
+            int fuselTicks = SamogonConfig.fuselBlindnessTicks();
+            if (fuselTicks > 0) {
+                player.addEffect(new MobEffectInstance(
+                        ModEffects.FUSEL_BLINDNESS, fuselTicks, 0, false, true, true));
+            }
+        } else {
+            player.addEffect(new MobEffectInstance(
+                    MobEffects.BLINDNESS, blindnessTicks, 0, true, true, true));
+        }
         player.addEffect(new MobEffectInstance(
                 MobEffects.WEAKNESS, weaknessTicks, severity >= 85 ? 1 : 0, true, true, true));
         player.addEffect(new MobEffectInstance(

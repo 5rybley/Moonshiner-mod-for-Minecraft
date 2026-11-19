@@ -16,5 +16,11 @@
     "sounds": [
       { "name": "samogon:cure_glug" }
     ]
+  },
+  "besom_hit": {
+    "subtitle": "subtitles.samogon.besom_hit",
+    "sounds": [
+      { "name": "samogon:besom_hit" }
+    ]
   }
 }

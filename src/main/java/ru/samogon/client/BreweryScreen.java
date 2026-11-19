@@ -18,9 +18,9 @@ import java.util.Locale;
 
 /**
  * The brewhouse ledger. It shares the copper-and-oak page of the other machines
- * and adds two process tabs — mashing and boiling — whose selected step is
- * stored in the block entity. Fermentation happens in the separate beer barrel,
- * not here. The baked page, slot wells and progress track come from
+ * and adds three process tabs — mashing, boiling and kvass — whose selected step
+ * is stored in the block entity. Fermentation happens in the separate beer
+ * barrel, not here. The baked page, slot wells and progress track come from
  * {@code textures/gui/machine_panel.png}; only the live values, the item seal and
  * the tab strip are painted here.
  */
@@ -37,10 +37,11 @@ public final class BreweryScreen extends AbstractContainerScreen<BreweryMenu> {
     private static final ResourceLocation BUTTON =
             ResourceLocation.fromNamespaceAndPath("samogon", "textures/gui/machine_button.png");
 
-    private static final int TAB_X = 278;
+    private static final int TAB_X = 270;
     private static final int TAB_W = 88;
+    /** The button sheet bakes three 20-pixel rows; any other height crops a border. */
     private static final int TAB_H = 20;
-    private static final int[] TAB_Y = {10, 33};
+    private static final int[] TAB_Y = {2, 23, 44};
 
     private static final int METRIC_LEFT = 16;
     private static final int METRIC_RIGHT = 202;
@@ -70,7 +71,7 @@ public final class BreweryScreen extends AbstractContainerScreen<BreweryMenu> {
     @Override
     protected void init() {
         super.init();
-        tabs = new TabButton[2];
+        tabs = new TabButton[3];
         for (int i = 0; i < tabs.length; i++) {
             tabs[i] = new TabButton(i);
             addRenderableWidget(tabs[i]);
@@ -115,6 +116,7 @@ public final class BreweryScreen extends AbstractContainerScreen<BreweryMenu> {
         // wider than that gap used to run underneath the tab buttons.
         String hintKey = switch (menu.data(BreweryData.TAB)) {
             case 1 -> "gui.samogon.brewery.hint.heat";
+            case 2 -> "gui.samogon.brewery.hint.kvass";
             default -> null;
         };
         if (hintKey != null) {
@@ -217,7 +219,7 @@ public final class BreweryScreen extends AbstractContainerScreen<BreweryMenu> {
         int impurities = menu.data(BreweryData.IMPURITIES);
         int temperature = menu.data(BreweryData.TEMPERATURE);
         int ambient = menu.data(BreweryData.AMBIENT);
-        int step = Math.max(0, Math.min(3, menu.data(BreweryData.STEP)));
+        int step = Math.max(0, Math.min(5, menu.data(BreweryData.STEP)));
         int duration = menu.data(BreweryData.DURATION);
         boolean filled = volume > 0;
 
@@ -314,7 +316,8 @@ public final class BreweryScreen extends AbstractContainerScreen<BreweryMenu> {
     private final class TabButton extends Button {
         private static final String[] KEYS = {
                 "gui.samogon.brewery.tab.mash",
-                "gui.samogon.brewery.tab.boil"
+                "gui.samogon.brewery.tab.boil",
+                "gui.samogon.brewery.tab.kvass"
         };
         private final int tabId;
         private boolean selected;

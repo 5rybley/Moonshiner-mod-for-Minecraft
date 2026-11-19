@@ -27,6 +27,10 @@ public final class SamogonConfig {
     public static final ModConfigSpec.DoubleValue HANGOVER_DURATION_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue BLACKOUT_ENABLED;
     public static final ModConfigSpec.DoubleValue MACHINE_SPEED_MULTIPLIER;
+    public static final ModConfigSpec.IntValue FUSEL_BLINDNESS_SECONDS;
+    public static final ModConfigSpec.IntValue BANYA_SOAK_SECONDS;
+    public static final ModConfigSpec.IntValue BANYA_AFTER_SECONDS;
+    public static final ModConfigSpec.DoubleValue BANYA_STEAM_DENSITY;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -43,6 +47,25 @@ public final class SamogonConfig {
                         "\"you drank too much\" is shown and the drinker comes to somewhere nearby.",
                         "Set to false to keep the top level harmless beyond nausea and vomiting.")
                 .define("blackoutEnabled", true);
+        FUSEL_BLINDNESS_SECONDS = builder
+                .comment("How long the heads/tails fog lasts, in seconds. Milk and honey cannot cure it;",
+                        "only time or death removes it. 0 disables the fog (the other technical debuffs stay).")
+                .defineInRange("fuselBlindnessSeconds", 300, 0, 3600);
+        builder.pop();
+
+        builder.push("banya");
+        BANYA_SOAK_SECONDS = builder
+                .comment("Seconds of continuous hot steam needed before stepping out grants the after-banya glow.",
+                        "The timer only runs while the stones are actually hot.")
+                .defineInRange("soakSeconds", 60, 5, 600);
+        BANYA_AFTER_SECONDS = builder
+                .comment("How long the after-banya regeneration lasts, in seconds. 0 disables the reward.")
+                .defineInRange("afterBanyaSeconds", 300, 0, 3600);
+        BANYA_STEAM_DENSITY = builder
+                .comment("Multiplier for the steam particle count in a closed banya.",
+                        "1.0 is the normal cloud, 0.5 halves it, 0 removes the particles (the heat, cure",
+                        "and steam veil still work). Useful on low-end clients and busy servers.")
+                .defineInRange("steamParticleDensity", 1.0D, 0.0D, 3.0D);
         builder.pop();
 
         builder.push("machines");
@@ -77,5 +100,24 @@ public final class SamogonConfig {
 
     public static boolean blackoutEnabled() {
         return BLACKOUT_ENABLED.get();
+    }
+
+    /** Ticks of heads/tails fog; zero when the fog is disabled. */
+    public static int fuselBlindnessTicks() {
+        return FUSEL_BLINDNESS_SECONDS.get() * 20;
+    }
+
+    /** Ticks of steam needed for the after-banya reward. */
+    public static int banyaSoakTicks() {
+        return BANYA_SOAK_SECONDS.get() * 20;
+    }
+
+    /** Ticks the after-banya glow lasts; zero disables it. */
+    public static int banyaAfterTicks() {
+        return BANYA_AFTER_SECONDS.get() * 20;
+    }
+
+    public static double banyaSteamDensity() {
+        return BANYA_STEAM_DENSITY.get();
     }
 }

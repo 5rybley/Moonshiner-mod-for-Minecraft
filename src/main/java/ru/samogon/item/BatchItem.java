@@ -68,6 +68,11 @@ public final class BatchItem extends Item {
     private final double defaultVolume;
     private final Tincture tincture;
     private final boolean technical;
+    /**
+     * True for the heads and tails fractions: drinking one leaves a five-minute
+     * blindness that milk cannot cure, so the player learns not to drink them.
+     */
+    private boolean fusel;
     /** Empty vessel returned after the last sip; glass bottles unless overridden. */
     private Supplier<Item> emptyContainer = () -> Items.GLASS_BOTTLE;
 
@@ -94,6 +99,13 @@ public final class BatchItem extends Item {
     public double defaultVolume() { return defaultVolume; }
     public Tincture tincture() { return tincture; }
     public boolean technical() { return technical; }
+    public boolean fusel() { return fusel; }
+
+    /** Marks the bottle as a heads or tails fraction (see {@link #fusel}). */
+    public BatchItem withFusel(boolean value) {
+        this.fusel = value;
+        return this;
+    }
 
     /** Finished drinks can be set down in the world; technical fractions cannot. */
     public boolean placeable() {
@@ -258,7 +270,18 @@ public final class BatchItem extends Item {
             lines.add(Component.translatable("tooltip.samogon.type",
                     Component.translatable(type.translationKey()))
                     .withStyle(ChatFormatting.LIGHT_PURPLE));
-            lines.add(Component.translatable(type.descriptionKey())
+            // Wine bottles carry the history of their style, not of the grape:
+            // a port tastes of port, and the tooltip should tell the story of
+            // port rather than repeat the Merlot family tree.
+            String description;
+            if (type == SpiritType.WINE) {
+                description = Wine.displayStyle(batch).historyKey();
+            } else if (type == SpiritType.SPARKLING_WINE) {
+                description = Wine.sparklingStyleOf(batch.origin()).historyKey();
+            } else {
+                description = type.descriptionKey();
+            }
+            lines.add(Component.translatable(description)
                     .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
         }
         if (type == SpiritType.SPARKLING_WINE) {
@@ -295,10 +318,33 @@ public final class BatchItem extends Item {
             lines.add(Component.translatable("tooltip.samogon.blend.effects",
                     Intoxication.auraSummary(auras)).withStyle(ChatFormatting.GREEN));
         }
+        if (fusel) {
+            // A plain label, no warning: the player finds out what the fraction
+            // does by drinking it, not from the tooltip.
+            lines.add(Component.translatable("tooltip.samogon.fusel")
+                    .withStyle(ChatFormatting.GRAY));
+        }
         if (placeable()) {
             lines.add(Component.translatable("tooltip.samogon.place")
                     .withStyle(ChatFormatting.DARK_GRAY));
         }
+    }
+
+    /**
+     * Picks the fuel line that agrees with the number. Russian needs a
+     * different word for one smelt, two to four and the rest; the English
+     * translations keep the same three keys so the lang files stay in step.
+     */
+    private static String fuelKey(int smelts) {
+        int lastTwo = smelts % 100;
+        int last = smelts % 10;
+        if (last == 1 && lastTwo != 11) {
+            return "tooltip.samogon.fuel.one";
+        }
+        if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+            return "tooltip.samogon.fuel.few";
+        }
+        return "tooltip.samogon.fuel";
     }
 
     /**
@@ -381,7 +427,7 @@ public final class BatchItem extends Item {
             Batch batch = BatchData.read(stack);
             Player player = entity instanceof Player p ? p : null;
             if (player != null) {
-                Intoxication.drink(player, batch, effectiveTincture(batch), technical);
+                Intoxication.drink(player, batch, effectiveTincture(batch), technical, fusel);
                 // Vanilla fires this from Player.eat; our drink overrides
                 // finishUsingItem, so "consume_item" advancements need the nudge.
                 if (player instanceof ServerPlayer server) {

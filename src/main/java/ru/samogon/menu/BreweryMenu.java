@@ -24,11 +24,12 @@ import ru.samogon.registry.ModMenus;
 
 /**
  * The brewhouse interface: one input slot, one additive slot and one output
- * slot, plus the player inventory. The two process tabs (mash, boil) are not
- * extra slots: the selected step lives in the block entity and the screen sends
- * it through {@link #clickMenuButton}. Fermentation is not offered here — that
- * happens in the separate beer fermentation barrel. All physics still happens
- * in {@link BreweryBlockEntity}; this menu only exposes and synchronizes it.
+ * slot, plus the player inventory. The three process tabs (mash, boil, kvass)
+ * are not extra slots: the selected step lives in the block entity and the
+ * screen sends it through {@link #clickMenuButton}. Fermentation is not offered
+ * here — that happens in the separate beer fermentation barrel. All physics
+ * still happens in {@link BreweryBlockEntity}; this menu only exposes and
+ * synchronizes it.
  */
 public final class BreweryMenu extends AbstractContainerMenu {
     public static final int SLOT_INPUT = BreweryBlockEntity.SLOT_INPUT;
@@ -114,15 +115,15 @@ public final class BreweryMenu extends AbstractContainerMenu {
         return data.get(index);
     }
 
-    /** The selected process tab: 0 mash, 1 boil. */
+    /** The selected process tab: 0 mash, 1 boil, 2 kvass. */
     public int tab() {
         return data.get(BreweryData.TAB);
     }
 
-    /** Grain or a bottled intermediate the vessel can accept. */
+    /** Grain, rusks or a bottled intermediate the vessel can accept. */
     public static boolean acceptsInput(ItemStack stack) {
         if (stack.is(ModItems.MALT.get()) || stack.is(ModItems.ROASTED_MALT.get())
-                || stack.is(Items.WHEAT)) {
+                || stack.is(Items.WHEAT) || stack.is(ModItems.RUSKS.get())) {
             return true;
         }
         if (!(stack.getItem() instanceof BatchItem)) return false;
@@ -188,7 +189,7 @@ public final class BreweryMenu extends AbstractContainerMenu {
     @Override
     public boolean clickMenuButton(Player player, int id) {
         if (brewery == null) return false;
-        if (id < 0 || id > 1) return false;
+        if (id < 0 || id > 2) return false;
         return brewery.setTab(id);
     }
 }

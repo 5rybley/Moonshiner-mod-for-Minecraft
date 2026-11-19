@@ -22,6 +22,8 @@ public final class ModSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> STILL_BUBBLE = register("still_bubble");
     /** Fizzy brine running down a parched throat. */
     public static final DeferredHolder<SoundEvent, SoundEvent> CURE_GLUG = register("cure_glug");
+    /** A wet birch besom slapping skin, followed by a short hiss of steam. */
+    public static final DeferredHolder<SoundEvent, SoundEvent> BESOM_HIT = register("besom_hit");
 
     private static DeferredHolder<SoundEvent, SoundEvent> register(String name) {
         ResourceLocation id = ResourceLocation.fromNamespaceAndPath(SamogonMod.MOD_ID, name);
