@@ -20,6 +20,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -29,6 +30,7 @@ import ru.samogon.process.BeerStyle;
 import ru.samogon.process.BlendCatalog;
 import ru.samogon.process.GrapeVariety;
 import ru.samogon.process.Simulation.Batch;
+import ru.samogon.process.SpiritFuel;
 import ru.samogon.process.SpiritType;
 import ru.samogon.process.SparklingStyle;
 import ru.samogon.process.Wine;
@@ -121,6 +123,34 @@ public final class BatchItem extends Item {
     /** The empty vessel this drink leaves behind when poured out or drunk. */
     public Item container() {
         return emptyContainer.get();
+    }
+
+    /**
+     * Strong spirit is a real fuel: the firebox burns the alcohol itself and
+     * leaves the empty bottle behind. Ordinary beer, wine and table-strength
+     * bottles return zero, so they can never be fed to a furnace by mistake.
+     */
+    @Override
+    public int getBurnTime(ItemStack stack, RecipeType<?> recipeType) {
+        Batch batch = BatchData.read(stack);
+        return SpiritFuel.burnTicks(batch.abv(), batch.volume());
+    }
+
+    /**
+     * The furnace asks for a crafting remainder before it consumes one fuel
+     * item. Strong spirit gets its empty glass bottle back, exactly as it does
+     * when the bottle is drunk; anything that is not fuel keeps the normal
+     * "item is consumed" behaviour.
+     */
+    @Override
+    public boolean hasCraftingRemainingItem(ItemStack stack) {
+        Batch batch = BatchData.read(stack);
+        return SpiritFuel.isFuel(batch.abv(), batch.volume());
+    }
+
+    @Override
+    public ItemStack getCraftingRemainingItem(ItemStack stack) {
+        return hasCraftingRemainingItem(stack) ? new ItemStack(container()) : ItemStack.EMPTY;
     }
 
     /**
@@ -256,6 +286,11 @@ public final class BatchItem extends Item {
         Batch batch = BatchData.read(stack);
         lines.add(Component.translatable("tooltip.samogon.abv", String.format(Locale.ROOT, "%.1f", batch.abv()))
                 .withStyle(ChatFormatting.AQUA));
+        int fuelSmelts = SpiritFuel.smelts(batch.abv(), batch.volume());
+        if (fuelSmelts > 0) {
+            lines.add(Component.translatable(fuelKey(fuelSmelts), fuelSmelts)
+                    .withStyle(ChatFormatting.GOLD));
+        }
         SpiritType type = typeOf(batch);
         if (type == SpiritType.BEER) {
             BeerStyle style = BeerStyle.of(batch.origin());

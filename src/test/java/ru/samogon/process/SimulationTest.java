@@ -132,6 +132,24 @@ public final class SimulationTest {
         Simulation.Batch lightAged = Simulation.mature(lightHearts, true);
         require(lightAged.oak() == lightHearts.oak() + 1,
                 "light 16% pot-still hearts must still be ageable");
+        require(SpiritFuel.smelts(96) == 48, "96% spirit must smelt forty-eight items");
+        require(SpiritFuel.smelts(99.5) == 64, "99.5% spirit must smelt sixty-four items");
+        require(SpiritFuel.burnTicks(95.999999) == SpiritFuel.burnTicks(96),
+                "the displayed tenth of a percent must drive the burn time");
+        require(!SpiritFuel.isFuel(40), "table-strength spirit must not be furnace fuel");
+        require(SpiritFuel.burnTicks(80) == SpiritFuel.TICKS_PER_ITEM,
+                "80% spirit must be the weakest usable fuel and still smelt one item");
+        require(!SpiritFuel.isFuel(79.9), "79.9% spirit must not be furnace fuel");
+        require(SpiritFuel.burnTicks(90) > SpiritFuel.burnTicks(85),
+                "stronger spirit must burn longer");
+        require(SpiritFuel.smelts(96, 50) == 24,
+                "half a bottle must be worth half the smelts");
+        require(!SpiritFuel.isFuel(96, 0.7),
+                "a sub-millilitre tail must not be a full firebox charge");
+        require(SpiritFuel.burnTicks(96, 100) == SpiritFuel.burnTicks(96),
+                "a full bottle must use the whole burn curve");
+        require(SpiritFuel.smelts(80.2) == 1,
+                "the tooltip must not promise a second smelt the ticks cannot finish");
         System.out.println("Simulation smoke test passed");
     }
 
