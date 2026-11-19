@@ -1,0 +1,33 @@
+{
+  "parent": "samogon:first_beer",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": "samogon:kvass"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_kvass.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "samogon:kvass"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_kvass.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

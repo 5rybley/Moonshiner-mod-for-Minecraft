@@ -1,0 +1,33 @@
+{
+  "parent": "samogon:root",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": "samogon:sweet_wort"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_mash.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "samogon:malt"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_mash.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

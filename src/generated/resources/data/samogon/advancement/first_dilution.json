@@ -1,0 +1,33 @@
+{
+  "parent": "samogon:first_hearts",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": "samogon:diluted_spirit"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_dilution.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "samogon:dilution_basin"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_dilution.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,33 @@
+{
+  "parent": "samogon:first_ferment",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": "samogon:distiller"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_still.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "samogon:distiller"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_still.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

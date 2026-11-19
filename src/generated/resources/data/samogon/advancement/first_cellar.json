@@ -1,0 +1,33 @@
+{
+  "parent": "samogon:first_wine",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": "samogon:bottle_rack"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_cellar.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "samogon:bottle_rack"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_cellar.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

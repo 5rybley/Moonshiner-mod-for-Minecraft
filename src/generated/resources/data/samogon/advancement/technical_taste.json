@@ -1,0 +1,37 @@
+{
+  "parent": "samogon:first_drink",
+  "criteria": {
+    "drank": {
+      "conditions": {
+        "item": {
+          "items": [
+            "samogon:heads_fraction",
+            "samogon:tails_fraction",
+            "samogon:neutral_spirit",
+            "samogon:anhydrous_spirit"
+          ]
+        }
+      },
+      "trigger": "minecraft:consume_item"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.technical_taste.description"
+    },
+    "frame": "challenge",
+    "icon": {
+      "count": 1,
+      "id": "samogon:tails_fraction"
+    },
+    "title": {
+      "translate": "advancement.samogon.technical_taste.title"
+    }
+  },
+  "requirements": [
+    [
+      "drank"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

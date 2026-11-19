@@ -1,0 +1,33 @@
+{
+  "parent": "samogon:root",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": "samogon:samogon_crate"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_crate.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "samogon:samogon_crate"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_crate.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

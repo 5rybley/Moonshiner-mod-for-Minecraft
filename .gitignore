@@ -1,5 +1,6 @@
 .gradle/
 build/
+src/generated/resources/.cache/
 run/
 runs/
 *.log

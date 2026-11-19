@@ -1,0 +1,27 @@
+{
+  "criteria": {
+    "tick": {
+      "trigger": "minecraft:tick"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "background": "samogon:textures/gui/advancements/backgrounds/workshop.png",
+    "description": {
+      "translate": "advancement.samogon.root.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "samogon:yeast"
+    },
+    "title": {
+      "translate": "advancement.samogon.root.title"
+    }
+  },
+  "requirements": [
+    [
+      "tick"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

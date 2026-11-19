@@ -1,0 +1,34 @@
+{
+  "parent": "samogon:first_wine",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": "samogon:sparkling_wine"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_sparkling.description"
+    },
+    "frame": "challenge",
+    "icon": {
+      "count": 1,
+      "id": "samogon:sparkling_wine"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_sparkling.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

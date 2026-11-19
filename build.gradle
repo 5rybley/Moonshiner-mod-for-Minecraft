@@ -24,6 +24,12 @@ neoForge {
     runs {
         client { client() }
         server { server(); programArgument '--nogui' }
+        data {
+            data()
+            programArguments.addAll '--mod', mod_id, '--all',
+                    '--output', file('src/generated/resources').absolutePath,
+                    '--existing', file('src/main/resources').absolutePath
+        }
         gameTestServer {
             type = 'gameTestServer'
             systemProperty 'neoforge.enabledGameTestNamespaces', 'samogon'
@@ -34,6 +40,15 @@ neoForge {
 
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 tasks.withType(ProcessResources).configureEach { filteringCharset = 'UTF-8' }
+
+// Advancement JSON is produced by `runData`; the folder is committed so a
+// plain `build` works without running the generators first.
+sourceSets.main.resources {
+    srcDir 'src/generated/resources'
+    // Data generators keep a hash cache next to their output; it is not mod
+    // data and must never end up at the root of the released jar.
+    exclude '.cache/**'
+}
 
 var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
     def props = ['minecraft_version_range', 'neo_version_range', 'loader_version_range',

@@ -1,0 +1,36 @@
+{
+  "parent": "samogon:first_drink",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "samogon:cup",
+              "samogon:shot_glass"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_vessel.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "samogon:cup"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_vessel.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

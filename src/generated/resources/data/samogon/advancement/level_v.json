@@ -1,0 +1,36 @@
+{
+  "parent": "samogon:first_drink",
+  "criteria": {
+    "drunk": {
+      "conditions": {
+        "effects": {
+          "samogon:intoxication": {
+            "amplifier": {
+              "min": 4
+            }
+          }
+        }
+      },
+      "trigger": "minecraft:effects_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.level_v.description"
+    },
+    "frame": "challenge",
+    "icon": {
+      "count": 1,
+      "id": "samogon:heads_fraction"
+    },
+    "title": {
+      "translate": "advancement.samogon.level_v.title"
+    }
+  },
+  "requirements": [
+    [
+      "drunk"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

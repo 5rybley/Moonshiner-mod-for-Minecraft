@@ -1,0 +1,33 @@
+{
+  "parent": "samogon:root",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": "samogon:banya_stove"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_banya.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "samogon:banya_stove"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_banya.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

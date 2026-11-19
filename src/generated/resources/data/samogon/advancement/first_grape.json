@@ -1,0 +1,38 @@
+{
+  "parent": "samogon:root",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "samogon:cabernet_grapes",
+              "samogon:merlot_grapes",
+              "samogon:chardonnay_grapes",
+              "samogon:riesling_grapes"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_grape.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "samogon:cabernet_grapes"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_grape.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

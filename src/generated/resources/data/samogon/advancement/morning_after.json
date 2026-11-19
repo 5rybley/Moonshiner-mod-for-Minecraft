@@ -1,0 +1,32 @@
+{
+  "parent": "samogon:level_v",
+  "criteria": {
+    "hangover": {
+      "conditions": {
+        "effects": {
+          "samogon:hangover": {}
+        }
+      },
+      "trigger": "minecraft:effects_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.morning_after.description"
+    },
+    "frame": "goal",
+    "icon": {
+      "count": 1,
+      "id": "samogon:brine"
+    },
+    "title": {
+      "translate": "advancement.samogon.morning_after.title"
+    }
+  },
+  "requirements": [
+    [
+      "hangover"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

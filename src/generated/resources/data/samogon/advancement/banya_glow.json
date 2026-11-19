@@ -1,0 +1,32 @@
+{
+  "parent": "samogon:first_banya",
+  "criteria": {
+    "glow": {
+      "conditions": {
+        "effects": {
+          "samogon:after_banya": {}
+        }
+      },
+      "trigger": "minecraft:effects_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.banya_glow.description"
+    },
+    "frame": "challenge",
+    "icon": {
+      "count": 1,
+      "id": "samogon:banya_stove"
+    },
+    "title": {
+      "translate": "advancement.samogon.banya_glow.title"
+    }
+  },
+  "requirements": [
+    [
+      "glow"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

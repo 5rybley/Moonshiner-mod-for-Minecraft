@@ -1,0 +1,34 @@
+{
+  "parent": "samogon:first_filter",
+  "criteria": {
+    "got_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": "samogon:neutral_spirit"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancement.samogon.first_neutral.description"
+    },
+    "frame": "goal",
+    "icon": {
+      "count": 1,
+      "id": "samogon:reflux_column"
+    },
+    "title": {
+      "translate": "advancement.samogon.first_neutral.title"
+    }
+  },
+  "requirements": [
+    [
+      "got_item"
+    ]
+  ],
+  "sends_telemetry_event": true
+}
