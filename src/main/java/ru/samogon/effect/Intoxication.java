@@ -106,6 +106,13 @@ public final class Intoxication {
         player.getPersistentData().putInt(PEAK_LEVEL, 0);
     }
 
+    /** Drops any vomit volley still queued, so a later session cannot resume it. */
+    static void clearPukeStream(Player player) {
+        CompoundTag data = player.getPersistentData();
+        data.putInt(PUKE_STREAM_LEFT, 0);
+        data.putLong(PUKE_STREAM_NEXT, 0L);
+    }
+
     /** True while a glass of brine is carrying the drinker through the session. */
     static boolean cured(Player player) {
         return player.getPersistentData().getBoolean(CURED_SESSION);
@@ -137,6 +144,7 @@ public final class Intoxication {
         }
 
         clearPeak(player);
+        clearPukeStream(player);
         // Brine lowers the level by one. A drink that still leaves the player
         // tipsy keeps its auras; the last step to sober clears them at once.
         boolean stillDrunk = player.hasEffect(ModEffects.INTOXICATION);
@@ -649,7 +657,11 @@ public final class Intoxication {
         int count = 8 + level * 2;
         CompoundTag data = player.getPersistentData();
         data.putInt(PUKE_STREAM_LEFT, Math.max(0, count - 1));
-        data.putInt(PUKE_STREAM_NEXT, player.tickCount + PUKE_INTERVAL_TICKS);
+        // The world clock, not the per-session tick counter: tickCount restarts
+        // at zero on login, so a deadline stored from it would stall the rest of
+        // the volley for minutes after a relog. Stored as a long so the deadline
+        // does not wrap after a couple of years of server uptime.
+        data.putLong(PUKE_STREAM_NEXT, server.getGameTime() + PUKE_INTERVAL_TICKS);
         spawnPukeBlock(player);
 
         player.addEffect(new MobEffectInstance(
@@ -675,13 +687,14 @@ public final class Intoxication {
             data.putInt(PUKE_STREAM_LEFT, 0);
             return;
         }
-        if (player.tickCount < data.getInt(PUKE_STREAM_NEXT)) {
+        if (player.serverLevel().getGameTime() < data.getLong(PUKE_STREAM_NEXT)) {
             return;
         }
 
         spawnPukeBlock(player);
         data.putInt(PUKE_STREAM_LEFT, left - 1);
-        data.putInt(PUKE_STREAM_NEXT, player.tickCount + PUKE_INTERVAL_TICKS);
+        data.putLong(PUKE_STREAM_NEXT,
+                player.serverLevel().getGameTime() + PUKE_INTERVAL_TICKS);
     }
 
     /**

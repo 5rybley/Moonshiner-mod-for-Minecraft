@@ -326,9 +326,15 @@ public final class ProductionChainTest {
         require(WineStyle.forComposition("sugar") == null,
                 "sugar alone must not aromatize wine");
 
-        Batch spirit = new Batch(750, 45, 70, 5, 1, false, "grain", 0);
+        Batch spirit = new Batch(100, 96, 70, 5, 1, false, "grain", 0);
         Batch port = Wine.fortify(red, spirit);
         require(Wine.stillStyleOf(port) == WineStyle.PORT, "fortified wine is port");
+        require(Math.abs(port.volume() - (red.volume() + spirit.volume())) < 1.0E-9,
+                "fortification must use the whole spirit charge instead of discarding it");
+        double expectedPortAbv = (red.volume() * red.abv() + spirit.volume() * spirit.abv())
+                / (red.volume() + spirit.volume());
+        require(Math.abs(port.abv() - Math.min(expectedPortAbv, 22.0)) < 1.0E-9,
+                "port strength must follow the mixture and only be capped at 22 %");
         require(port.abv() > red.abv() && port.abv() <= 22.0,
                 "port must be stronger than the wine and capped at 22 %");
         Batch sherry = Wine.fortify(oaked, spirit);

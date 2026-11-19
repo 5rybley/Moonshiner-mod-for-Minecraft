@@ -50,9 +50,11 @@ public final class IntoxicationEvents {
 
         int peak = Intoxication.peakLevel(player);
         Intoxication.clearCured(player);
-        // Sober again: drop the drink's auras and the hue marker so the next
-        // bottle starts clean and no stale beneficial effect lingers.
+        // Sober again: drop the drink's auras, the hue marker and any vomit
+        // volley still queued, so the next bottle starts clean and no stale
+        // beneficial effect (or leftover lump) lingers.
         Intoxication.clearAuras(player);
+        Intoxication.clearPukeStream(player);
         // A session that reached level V ends with the blackout: the screen
         // fades to black, "you drank too much" is shown and the drinker comes to
         // somewhere nearby. It fires once, here, instead of on a timer while

@@ -510,16 +510,16 @@ public final class ProcessBlockEntity extends BlockEntity {
 
     /**
      * A bottle of strong spirit can fortify a still wine at the blending table.
-     * Wine, beer and grape batches are rejected: the point is a distilled
-     * spirit, not another wine or a brew.
+     * Anything already distilled counts: neutral spirit, whiskey, rum, chacha
+     * and the grape brandy the winemaker's guide recommends. An undistilled
+     * wine, must, brew or wash is not a spirit and stays out.
      */
     private static boolean isFortifyingSpirit(ItemStack stack) {
         if (!(stack.getItem() instanceof BatchItem)) return false;
         try {
             Batch batch = BatchData.read(stack);
             return batch != null && batch.abv() >= 30 && batch.volume() >= 100
-                    && !Wine.isGrape(batch) && !Brewing.isBrew(batch)
-                    && SpiritType.of(batch) != SpiritType.BEER;
+                    && batch.passes() >= 1;
         } catch (RuntimeException ignored) {
             return false;
         }

@@ -255,13 +255,16 @@ public final class ProcessMenu extends AbstractContainerMenu {
         };
     }
 
-    /** A distilled bottle strong enough to fortify a still wine. */
+    /** A distilled spirit strong enough to fortify a still wine. */
     private static boolean isFortifyingSpirit(ItemStack stack) {
         if (!(stack.getItem() instanceof BatchItem)) return false;
         try {
             Batch batch = BatchData.read(stack);
+            // Anything already distilled counts, including the grape brandy the
+            // winemaker's guide recommends. Wine, must, wort and beer are not
+            // spirits: they have never been through a still.
             return batch != null && batch.abv() >= 30 && batch.volume() >= 100
-                    && !Wine.isGrape(batch) && !Brewing.isBrew(batch);
+                    && batch.passes() >= 1;
         } catch (RuntimeException ignored) {
             return false;
         }

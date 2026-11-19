@@ -318,10 +318,11 @@ public final class Wine {
     }
 
     /**
-     * Fortifies a still wine with a strong spirit. The table uses a quarter of
-     * the spirit bottle, roughly the proportion of grape spirit in a port; the
-     * result is capped at 22 % ABV. An oaked base becomes sherry, everything
-     * else becomes port.
+     * Fortifies a still wine with a strong spirit. The whole bottle goes into
+     * the blend; a full 100 ml charge of 96 % spirit lifts a 750 ml dry wine to
+     * roughly 22 %, the strength of a real port. The result is capped at 22 %
+     * and never raised artificially: a weak spirit simply makes a weaker
+     * fortified wine. An oaked base becomes sherry, everything else port.
      */
     public static Batch fortify(Batch wine, Batch spirit) {
         if (wine == null || spirit == null) {
@@ -336,12 +337,14 @@ public final class Wine {
         WineStyle base = stillStyleOf(wine.origin());
         WineStyle style = base == WineStyle.OAKED || base == WineStyle.SHERRY
                 ? WineStyle.SHERRY : WineStyle.PORT;
-        double spiritVolume = spirit.volume() * 0.25;
+        // The table consumes the whole bottle, so all of its spirit must end up
+        // in the blend. Mixing in only a quarter silently destroyed the rest.
+        double spiritVolume = spirit.volume();
         double volume = wine.volume() + spiritVolume;
         double abv = (wine.volume() * wine.abv() + spiritVolume * spirit.abv()) / volume;
         int quality = Simulation.clamp(wine.quality() + style.qualityBonus() + spirit.quality() / 20);
         int impurities = Math.max(0, wine.impurities() - 3 + spirit.impurities() / 10);
-        return new Batch(volume, Simulation.clamp(abv, 15.0, 22.0), quality, impurities,
+        return new Batch(volume, Math.min(abv, 22.0), quality, impurities,
                 wine.passes(), wine.filtered(), withStyle(wine.origin(), style),
                 wine.age() + 1, wine.composition(), wine.rectified(), wine.oak(),
                 wine.cut(), wine.columnRuns());

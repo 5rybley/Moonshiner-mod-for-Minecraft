@@ -287,9 +287,17 @@ public final class AgingBarrelBlockEntity extends BlockEntity implements Worldly
             }
             if (progress[slot] >= ageTicks()) {
                 if (chips > 0) {
+                    // Mature first, consume the chip only if it worked: a
+                    // hand-edited bottle that cannot be matured must not drain
+                    // the cask one chip per cycle.
+                    ItemStack matured = mature(stack, batch);
+                    if (matured == stack) {
+                        progress[slot] = 0;
+                        continue;
+                    }
                     chips--;
                     consumeChip();
-                    inventory.setItem(slot, mature(stack, batch));
+                    inventory.setItem(slot, matured);
                     progress[slot] = 0;
                     celebrate(server);
                 }
