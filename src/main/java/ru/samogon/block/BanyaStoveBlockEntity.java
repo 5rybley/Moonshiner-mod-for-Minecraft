@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraftforge.common.ForgeHooks;
 import ru.samogon.menu.BanyaStoveMenu;
 import ru.samogon.config.SamogonConfig;
 import ru.samogon.network.BanyaSteamPayload;
@@ -200,12 +201,23 @@ public final class BanyaStoveBlockEntity extends BlockEntity {
         return fuelTicks(stack) > 0;
     }
 
-    /** Burn time in ticks, or zero for a non-fuel item. */
+    /**
+     * Burn time in ticks, or zero for a non-fuel item.
+     *
+     * <p>Goes through {@link ForgeHooks#getBurnTime} rather than
+     * {@link ItemStack#getBurnTime} because Forge reports {@code -1} from that
+     * method for every item that does not override it, including coal and
+     * planks. The hook turns that {@code -1} into the vanilla furnace fuel
+     * table and fires the burn-time event, which is exactly what a vanilla
+     * furnace does. Reading {@code ItemStack#getBurnTime} directly and clamping
+     * it with {@code Math.max(0, ...)} silently turned every ordinary fuel into
+     * a non-fuel, leaving strong spirit as the only thing the firebox accepted.
+     */
     public static int fuelTicks(ItemStack stack) {
         if (stack.isEmpty()) {
             return 0;
         }
-        return Math.max(0, stack.getBurnTime(RecipeType.SMELTING));
+        return Math.max(0, ForgeHooks.getBurnTime(stack, RecipeType.SMELTING));
     }
 
     public void openMenu(Player player) {

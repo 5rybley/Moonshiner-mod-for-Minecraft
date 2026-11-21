@@ -6,7 +6,6 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
@@ -16,6 +15,7 @@ import net.minecraftforge.gametest.GameTestHolder;
 import ru.samogon.SamogonMod;
 import ru.samogon.block.AgingBarrelBlock;
 import ru.samogon.block.AgingBarrelBlockEntity;
+import ru.samogon.block.BanyaStoveBlockEntity;
 import ru.samogon.block.BreweryBlock;
 import ru.samogon.block.BreweryBlockEntity;
 import ru.samogon.block.ProcessBlockEntity;
@@ -172,8 +172,13 @@ public final class SamogonGameTests {
         BlockPos absolute = helper.absolutePos(furnacePos);
         Batch spirit = new Batch(100, 96, 90, 0, 0, false, "sugar", 0);
         ItemStack fuel = BatchData.create(ModItems.NEUTRAL_SPIRIT.get(), spirit);
-        helper.assertTrue(fuel.getBurnTime(RecipeType.SMELTING) == 48 * 200,
+        helper.assertTrue(BanyaStoveBlockEntity.fuelTicks(fuel) == 48 * 200,
                 "96% neutral spirit must burn for forty-eight smelts");
+        // Regression guard: Forge reports -1 from ItemStack#getBurnTime for any
+        // item that does not override it, so the firebox has to resolve fuels
+        // through the Forge hook or ordinary coal is silently rejected.
+        helper.assertTrue(BanyaStoveBlockEntity.fuelTicks(new ItemStack(Items.COAL)) == 1600,
+                "ordinary coal must be accepted as firebox fuel");
         furnace.setItem(0, new ItemStack(Items.RAW_IRON));
         furnace.setItem(1, fuel);
 
