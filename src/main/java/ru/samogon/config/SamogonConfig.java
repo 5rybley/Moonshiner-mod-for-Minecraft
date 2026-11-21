@@ -1,6 +1,6 @@
 package ru.samogon.config;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 /**
  * Common configuration for Moonshiner. The file lives in {@code config/samogon-common.toml}
@@ -21,19 +21,19 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  * config has been loaded, so callers never see a broken number.</p>
  */
 public final class SamogonConfig {
-    public static final ModConfigSpec SPEC;
+    public static final ForgeConfigSpec SPEC;
 
-    public static final ModConfigSpec.BooleanValue HANGOVER_ENABLED;
-    public static final ModConfigSpec.DoubleValue HANGOVER_DURATION_MULTIPLIER;
-    public static final ModConfigSpec.BooleanValue BLACKOUT_ENABLED;
-    public static final ModConfigSpec.DoubleValue MACHINE_SPEED_MULTIPLIER;
-    public static final ModConfigSpec.IntValue FUSEL_BLINDNESS_SECONDS;
-    public static final ModConfigSpec.IntValue BANYA_SOAK_SECONDS;
-    public static final ModConfigSpec.IntValue BANYA_AFTER_SECONDS;
-    public static final ModConfigSpec.DoubleValue BANYA_STEAM_DENSITY;
+    public static final ForgeConfigSpec.BooleanValue HANGOVER_ENABLED;
+    public static final ForgeConfigSpec.DoubleValue HANGOVER_DURATION_MULTIPLIER;
+    public static final ForgeConfigSpec.BooleanValue BLACKOUT_ENABLED;
+    public static final ForgeConfigSpec.DoubleValue MACHINE_SPEED_MULTIPLIER;
+    public static final ForgeConfigSpec.IntValue FUSEL_BLINDNESS_SECONDS;
+    public static final ForgeConfigSpec.IntValue BANYA_SOAK_SECONDS;
+    public static final ForgeConfigSpec.IntValue BANYA_AFTER_SECONDS;
+    public static final ForgeConfigSpec.DoubleValue BANYA_STEAM_DENSITY;
 
     static {
-        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
 
         builder.push("gameplay");
         HANGOVER_ENABLED = builder

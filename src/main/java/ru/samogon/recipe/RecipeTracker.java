@@ -4,14 +4,14 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import ru.samogon.SamogonMod;
 import ru.samogon.item.BatchData;
 import ru.samogon.item.BatchItem;
+import ru.samogon.network.ModNetwork;
 import ru.samogon.network.RecipePayload;
 import ru.samogon.process.BeerStyle;
 import ru.samogon.process.Simulation.Batch;
@@ -26,7 +26,7 @@ import java.util.Set;
  * and is scanned once a second from the inventory and the open container;
  * every time it grows the full set is pushed to the client.
  */
-@EventBusSubscriber(modid = SamogonMod.MOD_ID)
+@Mod.EventBusSubscriber(modid = SamogonMod.MOD_ID)
 public final class RecipeTracker {
     private static final String KEY = "samogon_known_recipes";
     private static final int SCAN_INTERVAL = 20;
@@ -41,8 +41,8 @@ public final class RecipeTracker {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
+    public static void onPlayerTick(TickEvent.PlayerTickEvent.Post event) {
+        if (!(event.player instanceof ServerPlayer player)) {
             return;
         }
         if (player.tickCount % SCAN_INTERVAL != 0) {
@@ -68,7 +68,7 @@ public final class RecipeTracker {
     }
 
     private static void send(ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, new RecipePayload(String.join(",", discovered(player))));
+        ModNetwork.sendToPlayer(new RecipePayload(String.join(",", discovered(player))), player);
     }
 
     /** Scans the inventory and the open container, recording any new drink type. */

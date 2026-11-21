@@ -16,8 +16,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
-import net.neoforged.neoforge.common.data.AdvancementProvider;
-import net.neoforged.neoforge.common.data.ExistingFileHelper;
+import net.minecraftforge.common.data.ExistingFileHelper;
+import net.minecraftforge.common.data.ForgeAdvancementProvider;
 import ru.samogon.SamogonMod;
 import ru.samogon.registry.ModBlocks;
 import ru.samogon.registry.ModEffects;
@@ -35,17 +35,16 @@ import java.util.function.Consumer;
  * the criteria are checked by the compiler and by {@code runData}, and adding a
  * branch is a few lines instead of a new file with a hand-typed id.</p>
  *
- * <p>Order matters: {@link ExistingFileHelper} only accepts a parent that has
- * already been written, so the tree is emitted root first, then branch by
- * branch.</p>
+ * <p>Order matters: a parent has to be written before a child that names it, so
+ * the tree is emitted root first, then branch by branch.</p>
  */
-public final class SamogonAdvancements implements AdvancementProvider.AdvancementGenerator {
+public final class SamogonAdvancements implements ForgeAdvancementProvider.AdvancementGenerator {
     private static final String MOD_ID = SamogonMod.MOD_ID;
 
     @Override
     public void generate(HolderLookup.Provider registries, Consumer<AdvancementHolder> saver,
                          ExistingFileHelper existingFileHelper) {
-        AdvancementHolder root = saveRoot(saver, existingFileHelper);
+        AdvancementHolder root = saveRoot(saver);
 
         // === DISTILLING ===
         AdvancementHolder mash = save(saver, existingFileHelper, "first_mash", root,
@@ -73,12 +72,12 @@ public final class SamogonAdvancements implements AdvancementProvider.Advancemen
                 true, true, false,
                 "got_item", items(ModItems.DILUTED_SPIRIT.get()));
 
-        save(saver, existingFileHelper, "oak_aged", dilution,
+        save(saver, "oak_aged", dilution,
                 new ItemStack(ModItems.OAK_AGED_SPIRIT.get()), "oak_aged", AdvancementType.CHALLENGE,
                 true, true, false,
                 "got_item", items(ModItems.OAK_AGED_SPIRIT.get()));
 
-        save(saver, existingFileHelper, "first_blend", dilution,
+        save(saver, "first_blend", dilution,
                 new ItemStack(ModItems.SAMOGON.get()), "first_blend", AdvancementType.GOAL,
                 true, true, false,
                 "got_item", items(ModItems.SAMOGON.get()));
@@ -93,7 +92,7 @@ public final class SamogonAdvancements implements AdvancementProvider.Advancemen
                 true, true, false,
                 "got_item", items(ModItems.NEUTRAL_SPIRIT.get()));
 
-        save(saver, existingFileHelper, "anhydrous", neutral,
+        save(saver, "anhydrous", neutral,
                 new ItemStack(ModItems.MOLECULAR_SIEVE.get()), "anhydrous", AdvancementType.CHALLENGE,
                 true, true, false,
                 "got_item", items(ModItems.ANHYDROUS_SPIRIT.get()));
@@ -113,7 +112,8 @@ public final class SamogonAdvancements implements AdvancementProvider.Advancemen
                                 ModItems.SPARKLING_WINE.get())));
 
         MobEffectsPredicate.Builder drunk = MobEffectsPredicate.Builder.effects()
-                .and(ModEffects.INTOXICATION, new MobEffectsPredicate.MobEffectInstancePredicate(
+                .and(ModEffects.INTOXICATION.getHolder().orElseThrow(),
+                        new MobEffectsPredicate.MobEffectInstancePredicate(
                         MinMaxBounds.Ints.atLeast(4), MinMaxBounds.Ints.ANY,
                         Optional.empty(), Optional.empty()));
         AdvancementHolder levelV = save(saver, existingFileHelper, "level_v", drink,
@@ -121,25 +121,25 @@ public final class SamogonAdvancements implements AdvancementProvider.Advancemen
                 true, true, false,
                 "drunk", EffectsChangedTrigger.TriggerInstance.hasEffects(drunk));
 
-        save(saver, existingFileHelper, "morning_after", levelV,
+        save(saver, "morning_after", levelV,
                 new ItemStack(ModItems.BRINE.get()), "morning_after", AdvancementType.GOAL,
                 true, true, false,
                 "hangover", EffectsChangedTrigger.TriggerInstance.hasEffects(
-                        MobEffectsPredicate.Builder.effects().and(ModEffects.HANGOVER)));
+                        MobEffectsPredicate.Builder.effects().and(ModEffects.HANGOVER.getHolder().orElseThrow())));
 
-        save(saver, existingFileHelper, "technical_taste", drink,
+        save(saver, "technical_taste", drink,
                 new ItemStack(ModItems.TAILS_FRACTION.get()), "technical_taste", AdvancementType.CHALLENGE,
                 true, true, false,
                 "drank", ConsumeItemTrigger.TriggerInstance.usedItem(ItemPredicate.Builder.item()
                         .of(ModItems.HEADS_FRACTION.get(), ModItems.TAILS_FRACTION.get(),
                                 ModItems.NEUTRAL_SPIRIT.get(), ModItems.ANHYDROUS_SPIRIT.get())));
 
-        save(saver, existingFileHelper, "first_crate", root,
+        save(saver, "first_crate", root,
                 new ItemStack(ModBlocks.SAMOGON_CRATE.get()), "first_crate", AdvancementType.TASK,
                 true, true, false,
                 "got_item", items(ModBlocks.SAMOGON_CRATE.get()));
 
-        save(saver, existingFileHelper, "first_vessel", drink,
+        save(saver, "first_vessel", drink,
                 new ItemStack(ModBlocks.CUP_ITEM.get()), "first_vessel", AdvancementType.TASK,
                 true, true, false,
                 "got_item", items(ModBlocks.CUP_ITEM.get(), ModBlocks.SHOT_GLASS_ITEM.get()));
@@ -155,7 +155,7 @@ public final class SamogonAdvancements implements AdvancementProvider.Advancemen
                 true, true, false,
                 "got_item", items(ModItems.BEER.get()));
 
-        save(saver, existingFileHelper, "first_kvass", beer,
+        save(saver, "first_kvass", beer,
                 new ItemStack(ModItems.KVASS.get()), "first_kvass", AdvancementType.TASK,
                 true, true, false,
                 "got_item", items(ModItems.KVASS.get()));
@@ -172,12 +172,12 @@ public final class SamogonAdvancements implements AdvancementProvider.Advancemen
                 true, true, false,
                 "got_item", items(ModItems.WINE.get()));
 
-        save(saver, existingFileHelper, "first_sparkling", wine,
+        save(saver, "first_sparkling", wine,
                 new ItemStack(ModItems.SPARKLING_WINE.get()), "first_sparkling", AdvancementType.CHALLENGE,
                 true, true, false,
                 "got_item", items(ModItems.SPARKLING_WINE.get()));
 
-        save(saver, existingFileHelper, "first_cellar", wine,
+        save(saver, "first_cellar", wine,
                 new ItemStack(ModBlocks.BOTTLE_RACK_ITEM.get()), "first_cellar", AdvancementType.TASK,
                 true, true, false,
                 "got_item", items(ModBlocks.BOTTLE_RACK_ITEM.get()));
@@ -188,19 +188,19 @@ public final class SamogonAdvancements implements AdvancementProvider.Advancemen
                 true, true, false,
                 "got_item", items(ModBlocks.BANYA_STOVE_ITEM.get()));
 
-        save(saver, existingFileHelper, "banya_glow", banya,
+        save(saver, "banya_glow", banya,
                 new ItemStack(ModBlocks.BANYA_STOVE_ITEM.get()), "banya_glow", AdvancementType.CHALLENGE,
                 true, true, false,
                 "glow", EffectsChangedTrigger.TriggerInstance.hasEffects(
-                        MobEffectsPredicate.Builder.effects().and(ModEffects.AFTER_BANYA)));
+                        MobEffectsPredicate.Builder.effects().and(ModEffects.AFTER_BANYA.getHolder().orElseThrow())));
 
-        save(saver, existingFileHelper, "first_besom", banya,
+        save(saver, "first_besom", banya,
                 new ItemStack(ModItems.BESOM.get()), "first_besom", AdvancementType.TASK,
                 true, true, false,
                 "got_item", items(ModItems.BESOM.get()));
     }
 
-    private static AdvancementHolder saveRoot(Consumer<AdvancementHolder> saver, ExistingFileHelper helper) {
+    private static AdvancementHolder saveRoot(Consumer<AdvancementHolder> saver) {
         return Advancement.Builder.advancement()
                 .display(new ItemStack(ModItems.YEAST.get()),
                         Component.translatable("advancement.samogon.root.title"),
@@ -209,10 +209,25 @@ public final class SamogonAdvancements implements AdvancementProvider.Advancemen
                                 "textures/gui/advancements/backgrounds/workshop.png"),
                         AdvancementType.TASK, true, false, false)
                 .addCriterion("tick", PlayerTrigger.TriggerInstance.tick())
-                .save(saver, ResourceLocation.fromNamespaceAndPath(MOD_ID, "root"), helper);
+                .save(saver, ResourceLocation.fromNamespaceAndPath(MOD_ID, "root"));
     }
 
-    private static AdvancementHolder save(Consumer<AdvancementHolder> saver, ExistingFileHelper helper,
+    /**
+     * Forge's {@code Advancement.Builder} has no {@code save(...)} overload that
+     * takes an {@link ExistingFileHelper} (NeoForge did), so the helper is only
+     * accepted here to keep the generator's call sites unchanged; it adds no
+     * validation on Forge.
+     */
+    private static AdvancementHolder save(Consumer<AdvancementHolder> saver,
+                                          ExistingFileHelper existingFileHelper, String name,
+                                          AdvancementHolder parent, ItemStack icon,
+                                          String translation, AdvancementType frame,
+                                          boolean toast, boolean announce, boolean hidden,
+                                          String criterion, net.minecraft.advancements.Criterion<?> trigger) {
+        return save(saver, name, parent, icon, translation, frame, toast, announce, hidden, criterion, trigger);
+    }
+
+    private static AdvancementHolder save(Consumer<AdvancementHolder> saver,
                                           String name, AdvancementHolder parent, ItemStack icon,
                                           String translation, AdvancementType frame,
                                           boolean toast, boolean announce, boolean hidden,
@@ -225,7 +240,7 @@ public final class SamogonAdvancements implements AdvancementProvider.Advancemen
         if (parent != null) {
             builder.parent(parent);
         }
-        return builder.save(saver, ResourceLocation.fromNamespaceAndPath(MOD_ID, name), helper);
+        return builder.save(saver, ResourceLocation.fromNamespaceAndPath(MOD_ID, name));
     }
 
     /**

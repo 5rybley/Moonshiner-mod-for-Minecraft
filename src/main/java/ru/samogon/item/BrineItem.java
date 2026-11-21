@@ -54,7 +54,7 @@ public final class BrineItem extends Item {
     @Override
     public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity entity) {
         if (!level.isClientSide && entity instanceof ServerPlayer player) {
-            boolean hangover = player.hasEffect(ModEffects.HANGOVER);
+            boolean hangover = player.hasEffect(ModEffects.holder(ModEffects.HANGOVER));
             int before = Intoxication.level(player);
 
             Intoxication.cure(player);

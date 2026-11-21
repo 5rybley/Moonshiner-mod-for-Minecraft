@@ -11,8 +11,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.gametest.GameTestDontPrefix;
+import net.minecraftforge.gametest.GameTestHolder;
 import ru.samogon.SamogonMod;
 import ru.samogon.block.AgingBarrelBlock;
 import ru.samogon.block.AgingBarrelBlockEntity;
@@ -38,8 +38,8 @@ import ru.samogon.registry.ModItems;
  * boil) and then read the public machine data. They run under {@code
  * gradlew runGameTestServer}.</p>
  */
-@GameTestHolder(SamogonMod.MOD_ID)
-@PrefixGameTestTemplate(false)
+@GameTestHolder(value = SamogonMod.MOD_ID, namespace = SamogonMod.MOD_ID)
+@GameTestDontPrefix
 public final class SamogonGameTests {
     private static final BlockPos BREWERY = new BlockPos(1, 1, 1);
     private static final BlockPos HEAT = new BlockPos(1, 0, 1);

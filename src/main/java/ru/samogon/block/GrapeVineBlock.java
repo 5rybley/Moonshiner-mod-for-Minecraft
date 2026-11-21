@@ -17,7 +17,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-import net.neoforged.neoforge.common.CommonHooks;
+import net.minecraftforge.common.ForgeHooks;
 import ru.samogon.process.GrapeVariety;
 import ru.samogon.registry.ModItems;
 
@@ -125,10 +125,10 @@ public final class GrapeVineBlock extends CropBlock {
         if (level.getRawBrightness(pos, 0) < 9) return;
         int age = this.getAge(state);
         if (age >= this.getMaxAge()) return;
-        float speed = getGrowthSpeed(state, level, pos);
-        if (CommonHooks.canCropGrow(level, pos, state, random.nextInt((int) (25.0F / speed) + 1) == 0)) {
+        float speed = getGrowthSpeed(state.getBlock(), level, pos);
+        if (ForgeHooks.onCropsGrowPre(level, pos, state, random.nextInt((int) (25.0F / speed) + 1) == 0)) {
             level.setBlock(pos, withAge(state, age + 1), 2);
-            CommonHooks.fireCropGrowPost(level, pos, state);
+            ForgeHooks.onCropsGrowPost(level, pos, state);
         }
     }
 

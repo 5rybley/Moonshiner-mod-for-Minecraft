@@ -1,11 +1,11 @@
 package ru.samogon.network;
 
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.event.network.CustomPayloadEvent;
 import ru.samogon.SamogonMod;
 
 /**
@@ -20,7 +20,7 @@ public record BanyaSteamPayload(int temperatureTenths) implements CustomPacketPa
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(
                     SamogonMod.MOD_ID, "banya_steam"));
 
-    public static final StreamCodec<FriendlyByteBuf, BanyaSteamPayload> STREAM_CODEC =
+    public static final StreamCodec<RegistryFriendlyByteBuf, BanyaSteamPayload> STREAM_CODEC =
             StreamCodec.composite(
                     ByteBufCodecs.VAR_INT, BanyaSteamPayload::temperatureTenths,
                     BanyaSteamPayload::new);
@@ -31,7 +31,8 @@ public record BanyaSteamPayload(int temperatureTenths) implements CustomPacketPa
     }
 
     /** Clientbound only, so the client-only overlay never loads on a server. */
-    public static void handle(BanyaSteamPayload payload, IPayloadContext context) {
+    public static void handle(BanyaSteamPayload payload, CustomPayloadEvent.Context context) {
         context.enqueueWork(() -> ru.samogon.client.BanyaSteamOverlay.update(payload.temperatureTenths()));
+        context.setPacketHandled(true);
     }
 }

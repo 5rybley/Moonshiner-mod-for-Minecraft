@@ -1,14 +1,12 @@
 package ru.samogon.client;
 
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
-import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
-import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
-import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
+import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.RegisterColorHandlersEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import ru.samogon.SamogonMod;
 import ru.samogon.block.PlacedVesselBlock;
 import ru.samogon.registry.ModBlocks;
@@ -16,24 +14,23 @@ import ru.samogon.registry.ModEntityTypes;
 import ru.samogon.registry.ModMenus;
 
 /** Client-only registrations that must run on the mod event bus. */
-@EventBusSubscriber(modid = SamogonMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = SamogonMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class ClientSetup {
-    /** Draws the crate item with the bottles it carries, matching the block in the world. */
-    private static final IClientItemExtensions CRATE_ITEM_EXTENSIONS = new IClientItemExtensions() {
-        @Override
-        public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-            return SamogonCrateItemRenderer.get();
-        }
-    };
-
     private ClientSetup() {}
 
+    /**
+     * Registers the container screens. Forge makes vanilla's
+     * {@code MenuScreens.register} public through an access transformer, which
+     * is the 1.21.1 replacement for the removed menu-screen registration event.
+     */
     @SubscribeEvent
-    public static void registerMenuScreens(RegisterMenuScreensEvent event) {
-        event.register(ModMenus.PROCESS.get(), ProcessScreen::new);
-        event.register(ModMenus.AGING_BARREL.get(), AgingBarrelScreen::new);
-        event.register(ModMenus.BREWERY.get(), BreweryScreen::new);
-        event.register(ModMenus.BANYA_STOVE.get(), BanyaStoveScreen::new);
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() -> {
+            MenuScreens.register(ModMenus.PROCESS.get(), ProcessScreen::new);
+            MenuScreens.register(ModMenus.AGING_BARREL.get(), AgingBarrelScreen::new);
+            MenuScreens.register(ModMenus.BREWERY.get(), BreweryScreen::new);
+            MenuScreens.register(ModMenus.BANYA_STOVE.get(), BanyaStoveScreen::new);
+        });
     }
 
     @SubscribeEvent
@@ -42,11 +39,6 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlocks.PLACED_DRINK_ENTITY.get(), PlacedDrinkRenderer::new);
         // The vomited soul-sand lump is drawn as a small dropped-block-sized cube.
         event.registerEntityRenderer(ModEntityTypes.PUKE.get(), PukeBlockRenderer::new);
-    }
-
-    @SubscribeEvent
-    public static void registerClientExtensions(RegisterClientExtensionsEvent event) {
-        event.registerItem(CRATE_ITEM_EXTENSIONS, ModBlocks.SAMOGON_CRATE_ITEM.get());
     }
 
     /**

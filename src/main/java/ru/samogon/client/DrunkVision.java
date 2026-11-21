@@ -1,16 +1,16 @@
 package ru.samogon.client;
 
 import net.minecraft.Util;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
-import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ViewportEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import ru.samogon.SamogonMod;
 import ru.samogon.effect.Intoxication;
 import ru.samogon.registry.ModEffects;
@@ -35,7 +35,7 @@ import ru.samogon.registry.ModEffects;
  * {@code fill}/{@code fillGradient} path — the one {@link BlackoutOverlay} uses —
  * shades correctly.
  */
-@EventBusSubscriber(modid = SamogonMod.MOD_ID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = SamogonMod.MOD_ID, value = Dist.CLIENT)
 public final class DrunkVision {
     /** Full-strength tip of the horizon, in degrees, at level V. */
     private static final float MAX_ROLL_DEGREES = 13.0F;
@@ -90,7 +90,7 @@ public final class DrunkVision {
     private DrunkVision() {}
 
     @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
+    public static void onClientTick(TickEvent.ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
 
         float target = targetStrength(minecraft);
@@ -133,14 +133,17 @@ public final class DrunkVision {
                 + (float) (Math.sin(seconds * 0.6 + 0.9) * MAX_YAW_SWAY_DEGREES * strength));
     }
 
-    @SubscribeEvent
-    public static void onRenderGui(RenderGuiEvent.Pre event) {
+    /**
+     * Draws the wash and the dark rim as a GUI layer. Registered below the
+     * camera overlay, so the crosshair, hotbar and every other vanilla HUD
+     * layer stay on top of the veil.
+     */
+    public static void render(GuiGraphics graphics, DeltaTracker delta) {
         Minecraft minecraft = Minecraft.getInstance();
         if (strength <= 0.001F || minecraft.screen != null || minecraft.options.hideGui) {
             return;
         }
 
-        GuiGraphics graphics = event.getGuiGraphics();
         int width = graphics.guiWidth();
         int height = graphics.guiHeight();
 
@@ -200,7 +203,7 @@ public final class DrunkVision {
         if (minecraft.player == null) {
             return DEFAULT_TINT;
         }
-        MobEffectInstance mark = minecraft.player.getEffect(ModEffects.TINCTURE_MARK);
+        MobEffectInstance mark = minecraft.player.getEffect(ModEffects.holder(ModEffects.TINCTURE_MARK));
         if (mark == null) {
             return DEFAULT_TINT;
         }
@@ -218,7 +221,7 @@ public final class DrunkVision {
             return 0.0F;
         }
 
-        MobEffectInstance effect = minecraft.player.getEffect(ModEffects.INTOXICATION);
+        MobEffectInstance effect = minecraft.player.getEffect(ModEffects.holder(ModEffects.INTOXICATION));
         if (effect == null) {
             return 0.0F;
         }
@@ -227,10 +230,10 @@ public final class DrunkVision {
 
         // Same cures the rest of the rules know: brine clears the head, oak keeps
         // the drinker steady on their feet.
-        if (minecraft.player.hasEffect(ModEffects.CLEAR_HEAD)) {
+        if (minecraft.player.hasEffect(ModEffects.holder(ModEffects.CLEAR_HEAD))) {
             base *= 0.35F;
         }
-        if (minecraft.player.hasEffect(ModEffects.OAK_GRIT)) {
+        if (minecraft.player.hasEffect(ModEffects.holder(ModEffects.OAK_GRIT))) {
             base *= 0.80F;
         }
         return Mth.clamp(base, 0.0F, 1.0F);

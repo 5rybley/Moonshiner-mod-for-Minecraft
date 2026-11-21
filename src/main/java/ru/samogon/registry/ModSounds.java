@@ -3,8 +3,8 @@ package ru.samogon.registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.RegistryObject;
 import ru.samogon.SamogonMod;
 
 /**
@@ -17,15 +17,15 @@ public final class ModSounds {
             DeferredRegister.create(Registries.SOUND_EVENT, SamogonMod.MOD_ID);
 
     /** A bottle being emptied in several gulps. */
-    public static final DeferredHolder<SoundEvent, SoundEvent> DRINK_SWIG = register("drink_swig");
+    public static final RegistryObject<SoundEvent> DRINK_SWIG = register("drink_swig");
     /** A simmering pot still, used as a slow ambient loop. */
-    public static final DeferredHolder<SoundEvent, SoundEvent> STILL_BUBBLE = register("still_bubble");
+    public static final RegistryObject<SoundEvent> STILL_BUBBLE = register("still_bubble");
     /** Fizzy brine running down a parched throat. */
-    public static final DeferredHolder<SoundEvent, SoundEvent> CURE_GLUG = register("cure_glug");
+    public static final RegistryObject<SoundEvent> CURE_GLUG = register("cure_glug");
     /** A wet birch besom slapping skin, followed by a short hiss of steam. */
-    public static final DeferredHolder<SoundEvent, SoundEvent> BESOM_HIT = register("besom_hit");
+    public static final RegistryObject<SoundEvent> BESOM_HIT = register("besom_hit");
 
-    private static DeferredHolder<SoundEvent, SoundEvent> register(String name) {
+    private static RegistryObject<SoundEvent> register(String name) {
         ResourceLocation id = ResourceLocation.fromNamespaceAndPath(SamogonMod.MOD_ID, name);
         return SOUNDS.register(name, () -> SoundEvent.createVariableRangeEvent(id));
     }

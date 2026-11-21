@@ -23,11 +23,12 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.registries.RegistryObject;
 import ru.samogon.entity.PukeBlockEntity;
 import ru.samogon.config.SamogonConfig;
 import ru.samogon.item.BatchItem;
 import ru.samogon.network.BlackoutPayload;
+import ru.samogon.network.ModNetwork;
 import ru.samogon.process.AromaFamily;
 import ru.samogon.process.Simulation.Batch;
 import ru.samogon.registry.ModEffects;
@@ -72,7 +73,7 @@ public final class Intoxication {
      */
     private static final String AURAS = "samogon:auras";
 
-    private static final List<Holder<MobEffect>> TINCTURE_AURAS = List.<Holder<MobEffect>>of(
+    private static final List<RegistryObject<MobEffect>> TINCTURE_AURAS = List.<RegistryObject<MobEffect>>of(
             ModEffects.BERRY_FURY,
             ModEffects.HONEY_GUARD,
             ModEffects.BOTANICAL_CLARITY,
@@ -83,9 +84,14 @@ public final class Intoxication {
 
     private Intoxication() {}
 
+    /** Registry holder of an aura by its index in {@link #TINCTURE_AURAS}. */
+    private static Holder<MobEffect> auraHolder(int index) {
+        return TINCTURE_AURAS.get(index).getHolder().orElseThrow();
+    }
+
     /** Returns the current intoxication level, from 0 (sober) to 5. */
     public static int level(Player player) {
-        MobEffectInstance effect = player.getEffect(ModEffects.INTOXICATION);
+        MobEffectInstance effect = player.getEffect(ModEffects.holder(ModEffects.INTOXICATION));
         return effect == null ? 0 : Math.min(MAX_LEVEL, effect.getAmplifier() + 1);
     }
 
@@ -128,17 +134,17 @@ public final class Intoxication {
      * follows is not mistaken for a natural one and does not re-apply a hangover.
      */
     public static void cure(ServerPlayer player) {
-        MobEffectInstance current = player.getEffect(ModEffects.INTOXICATION);
+        MobEffectInstance current = player.getEffect(ModEffects.holder(ModEffects.INTOXICATION));
         if (current != null) {
             int amplifier = current.getAmplifier();
             int duration = current.getDuration();
             // MobEffectInstance#update only accepts a *higher* amplifier, so a
             // weaker instance would be ignored (or parked in hiddenEffect).
             // Dropping the old effect first is the only way to sober up.
-            player.removeEffect(ModEffects.INTOXICATION);
+            player.removeEffect(ModEffects.holder(ModEffects.INTOXICATION));
             if (amplifier > 0) {
                 player.addEffect(new MobEffectInstance(
-                        ModEffects.INTOXICATION, duration, amplifier - 1,
+                        ModEffects.holder(ModEffects.INTOXICATION), duration, amplifier - 1,
                         false, true, true));
             }
         }
@@ -147,15 +153,15 @@ public final class Intoxication {
         clearPukeStream(player);
         // Brine lowers the level by one. A drink that still leaves the player
         // tipsy keeps its auras; the last step to sober clears them at once.
-        boolean stillDrunk = player.hasEffect(ModEffects.INTOXICATION);
+        boolean stillDrunk = player.hasEffect(ModEffects.holder(ModEffects.INTOXICATION));
         if (!stillDrunk) {
             clearAuras(player);
         }
         player.getPersistentData().putBoolean(CURED_SESSION, true);
-        player.removeEffect(ModEffects.HANGOVER);
+        player.removeEffect(ModEffects.holder(ModEffects.HANGOVER));
         player.removeEffect(MobEffects.CONFUSION);
         player.removeEffect(MobEffects.HUNGER);
-        player.addEffect(new MobEffectInstance(ModEffects.CLEAR_HEAD, 30 * 20, 0, false, true, true));
+        player.addEffect(new MobEffectInstance(ModEffects.holder(ModEffects.CLEAR_HEAD), 30 * 20, 0, false, true, true));
     }
 
     /**
@@ -193,7 +199,7 @@ public final class Intoxication {
         // A fresh drink starts a fresh session: brine no longer shields it.
         clearCured(server);
 
-        MobEffectInstance existing = player.getEffect(ModEffects.INTOXICATION);
+        MobEffectInstance existing = player.getEffect(ModEffects.holder(ModEffects.INTOXICATION));
         int currentLevel = existing == null ? 0 : Math.min(MAX_LEVEL, existing.getAmplifier() + 1);
         int baseLevel = baseLevel(batch);
         int nextLevel = currentLevel == 0
@@ -201,15 +207,15 @@ public final class Intoxication {
                 : Math.min(MAX_LEVEL, Math.max(currentLevel, baseLevel) + 1);
         int duration = Math.max(durationTicks(batch), existing == null ? 0 : existing.getDuration());
 
-        player.addEffect(new MobEffectInstance(ModEffects.INTOXICATION, duration, nextLevel - 1, false, true, true));
+        player.addEffect(new MobEffectInstance(ModEffects.holder(ModEffects.INTOXICATION), duration, nextLevel - 1, false, true, true));
 
         storeAuras(server, auras);
         int dominant = dominantAuraIndex(auras);
-        player.removeEffect(ModEffects.TINCTURE_MARK);
+        player.removeEffect(ModEffects.holder(ModEffects.TINCTURE_MARK));
         if (dominant >= 0) {
             // The marker only carries the dominant hue for DrunkVision; the
             // actual aura strengths live in the persistent aura map above.
-            player.addEffect(new MobEffectInstance(ModEffects.TINCTURE_MARK, duration, dominant, false, false, false));
+            player.addEffect(new MobEffectInstance(ModEffects.holder(ModEffects.TINCTURE_MARK), duration, dominant, false, false, false));
         }
         // Apply the auras immediately instead of waiting for the next effect
         // tick, so the first sip visibly grants every effect.
@@ -280,11 +286,11 @@ public final class Intoxication {
 
     /** Removes every aura effect and forgets the current drink's aura map. */
     static void clearAuras(Player player) {
-        for (Holder<MobEffect> aura : TINCTURE_AURAS) {
-            player.removeEffect(aura);
+        for (int i = 0; i < TINCTURE_AURAS.size(); i++) {
+            player.removeEffect(auraHolder(i));
         }
         player.getPersistentData().remove(AURAS);
-        player.removeEffect(ModEffects.TINCTURE_MARK);
+        player.removeEffect(ModEffects.holder(ModEffects.TINCTURE_MARK));
     }
 
     /** The strongest aura in the map, in canonical order on a tie. */
@@ -313,7 +319,7 @@ public final class Intoxication {
 
         // Botanical clarity works from the first sip now; its strength is the
         // aura level, not the intoxication level.
-        boolean botanical = player.hasEffect(ModEffects.BOTANICAL_CLARITY);
+        boolean botanical = player.hasEffect(ModEffects.holder(ModEffects.BOTANICAL_CLARITY));
         int botanicalLevel = auraAmplifier(player, "botanical") + 1;
 
         // Keep nausea active even at level I; higher levels refresh it faster and for longer.
@@ -432,7 +438,7 @@ public final class Intoxication {
             int fuselTicks = SamogonConfig.fuselBlindnessTicks();
             if (fuselTicks > 0) {
                 player.addEffect(new MobEffectInstance(
-                        ModEffects.FUSEL_BLINDNESS, fuselTicks, 0, false, true, true));
+                        ModEffects.holder(ModEffects.FUSEL_BLINDNESS), fuselTicks, 0, false, true, true));
             }
         } else {
             player.addEffect(new MobEffectInstance(
@@ -522,7 +528,7 @@ public final class Intoxication {
     public static int auraAmplifier(Player player, String auraId) {
         int index = auraIndex(auraId);
         if (index < 0) return -1;
-        MobEffectInstance effect = player.getEffect(TINCTURE_AURAS.get(index));
+        MobEffectInstance effect = player.getEffect(auraHolder(index));
         return effect == null ? -1 : effect.getAmplifier();
     }
 
@@ -537,7 +543,7 @@ public final class Intoxication {
 
         for (int i = 0; i < TINCTURE_AURAS.size(); i++) {
             if (!active || !auras.containsKey(AromaFamily.AURAS.get(i))) {
-                player.removeEffect(TINCTURE_AURAS.get(i));
+                player.removeEffect(auraHolder(i));
             }
         }
         if (!active) {
@@ -548,7 +554,7 @@ public final class Intoxication {
             int index = auraIndex(entry.getKey());
             if (index < 0) continue;
             int amplifier = Math.min(AromaFamily.MAX_AURA_LEVEL, Math.max(1, entry.getValue())) - 1;
-            Holder<MobEffect> desired = TINCTURE_AURAS.get(index);
+            Holder<MobEffect> desired = auraHolder(index);
             MobEffectInstance current = player.getEffect(desired);
             if (current == null || current.getDuration() < 40 || current.getAmplifier() != amplifier) {
                 // A MobEffectInstance update cannot lower the amplifier, so a
@@ -739,7 +745,7 @@ public final class Intoxication {
         server.playSound(null, player.blockPosition(), SoundEvents.WITHER_HURT, SoundSource.PLAYERS, 0.9F, 0.55F);
         player.addEffect(new MobEffectInstance(
                 MobEffects.BLINDNESS, BLACKOUT_FADE_TICKS + BLACKOUT_HOLD_TICKS, 0, true, false, false));
-        PacketDistributor.sendToPlayer(player, new BlackoutPayload(BLACKOUT_FADE_TICKS, BLACKOUT_HOLD_TICKS));
+        ModNetwork.sendToPlayer(new BlackoutPayload(BLACKOUT_FADE_TICKS, BLACKOUT_HOLD_TICKS), player);
         player.displayClientMessage(Component.translatable("message.samogon.intoxication.blackout"), false);
 
         // Teleport once the screen has finished fading to black, so the player

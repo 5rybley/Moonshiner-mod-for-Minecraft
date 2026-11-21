@@ -1,6 +1,7 @@
 package ru.samogon.item;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
@@ -8,14 +9,31 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.Block;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import ru.samogon.block.SamogonCrateBlockEntity;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /** Block item for the open crate: explains the click controls and stored bottle count. */
 public final class SamogonCrateItem extends BlockItem {
     public SamogonCrateItem(Block block, Properties properties) {
         super(block, properties);
+    }
+
+    /**
+     * The crate item is drawn with a custom renderer so it shows the bottles it
+     * carries, matching the block in the world. Forge supplies client item
+     * extensions through this hook; the body only ever runs on the client.
+     */
+    @Override
+    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
+        consumer.accept(new IClientItemExtensions() {
+            @Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                return ru.samogon.client.SamogonCrateItemRenderer.get();
+            }
+        });
     }
 
     @Override

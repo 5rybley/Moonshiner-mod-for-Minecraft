@@ -10,12 +10,12 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.AbstractArrow;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import ru.samogon.SamogonMod;
 import ru.samogon.config.SamogonConfig;
 import ru.samogon.registry.ModEffects;
@@ -25,7 +25,7 @@ import ru.samogon.registry.ModEffects;
  * critical strike, the passive perks of the tincture affinities, and the
  * hangover that follows once the drinker sobers up.
  */
-@EventBusSubscriber(modid = SamogonMod.MOD_ID)
+@Mod.EventBusSubscriber(modid = SamogonMod.MOD_ID)
 public final class IntoxicationEvents {
     private IntoxicationEvents() {}
 
@@ -35,8 +35,8 @@ public final class IntoxicationEvents {
      * ended by brine has already cleared the tracker and is left alone.
      */
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
+    public static void onPlayerTick(TickEvent.PlayerTickEvent.Post event) {
+        if (!(event.player instanceof ServerPlayer player)) {
             return;
         }
 
@@ -79,7 +79,7 @@ public final class IntoxicationEvents {
     @SubscribeEvent
     public static void onLivingDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            player.removeEffect(ModEffects.FUSEL_BLINDNESS);
+            player.removeEffect(ModEffects.holder(ModEffects.FUSEL_BLINDNESS));
         }
     }
 
@@ -87,7 +87,7 @@ public final class IntoxicationEvents {
         int duration = (int) Math.round((60 + 30 * peak) * 20 * SamogonConfig.hangoverDurationMultiplier());
         int amplifier = peak >= 5 ? 1 : 0;
         player.addEffect(new MobEffectInstance(
-                ModEffects.HANGOVER, duration, amplifier, false, true, true));
+                ModEffects.holder(ModEffects.HANGOVER), duration, amplifier, false, true, true));
         player.displayClientMessage(
                 Component.translatable(amplifier > 0
                         ? "message.samogon.hangover.severe" : "message.samogon.hangover"),
@@ -108,7 +108,7 @@ public final class IntoxicationEvents {
     }
 
     @SubscribeEvent
-    public static void onIncomingDamage(LivingIncomingDamageEvent event) {
+    public static void onIncomingDamage(LivingHurtEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
@@ -192,7 +192,7 @@ public final class IntoxicationEvents {
     }
 
     @SubscribeEvent
-    public static void onOutgoingDamage(LivingDamageEvent.Pre event) {
+    public static void onOutgoingDamage(LivingDamageEvent event) {
         if (!(event.getSource().getEntity() instanceof ServerPlayer player)) {
             return;
         }
@@ -225,7 +225,7 @@ public final class IntoxicationEvents {
 
         LivingEntity victim = event.getEntity();
         if (multiplier > 1.001F) {
-            event.setNewDamage(event.getNewDamage() * multiplier);
+            event.setAmount(event.getAmount() * multiplier);
         }
 
         // Spiced Ember: the drink itself burns, so even bare fists carry fire.

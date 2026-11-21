@@ -3,6 +3,7 @@ build/
 src/generated/resources/.cache/
 run/
 runs/
+run-data/
 *.log
 .idea/
 *.iml

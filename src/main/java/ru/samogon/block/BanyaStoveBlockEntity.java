@@ -27,6 +27,7 @@ import net.minecraft.world.SimpleMenuProvider;
 import ru.samogon.menu.BanyaStoveMenu;
 import ru.samogon.config.SamogonConfig;
 import ru.samogon.network.BanyaSteamPayload;
+import ru.samogon.network.ModNetwork;
 import ru.samogon.process.Environment;
 import ru.samogon.registry.ModBlocks;
 import ru.samogon.registry.ModEffects;
@@ -409,8 +410,8 @@ public final class BanyaStoveBlockEntity extends BlockEntity {
     private void applyCure(ServerLevel server) {
         for (ServerPlayer player : server.getPlayers(candidate -> !candidate.isSpectator()
                 && candidate.level() == server && room.contains(candidate.blockPosition()))) {
-            player.removeEffect(ModEffects.HANGOVER);
-            player.addEffect(new MobEffectInstance(ModEffects.CLEAR_HEAD, 140, 0, false, true, true));
+            player.removeEffect(ModEffects.holder(ModEffects.HANGOVER));
+            player.addEffect(new MobEffectInstance(ModEffects.holder(ModEffects.CLEAR_HEAD), 140, 0, false, true, true));
             if (temperature >= 80.0) {
                 player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 60, 0, true, false, false));
             }
@@ -422,7 +423,7 @@ public final class BanyaStoveBlockEntity extends BlockEntity {
         int tenths = temperatureTenths();
         for (ServerPlayer player : server.getPlayers(candidate -> !candidate.isSpectator()
                 && candidate.level() == server && room.contains(candidate.blockPosition()))) {
-            player.connection.send(new BanyaSteamPayload(tenths));
+            ModNetwork.sendToPlayer(new BanyaSteamPayload(tenths), player);
         }
     }
 
@@ -472,7 +473,7 @@ public final class BanyaStoveBlockEntity extends BlockEntity {
         if (ticks <= 0) {
             return;
         }
-        player.addEffect(new MobEffectInstance(ModEffects.AFTER_BANYA, ticks, 0,
+        player.addEffect(new MobEffectInstance(ModEffects.holder(ModEffects.AFTER_BANYA), ticks, 0,
                 false, true, true));
         player.displayClientMessage(Component.translatable("message.samogon.banya.after"), true);
     }

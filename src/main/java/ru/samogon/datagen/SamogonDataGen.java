@@ -1,10 +1,10 @@
 package ru.samogon.datagen;
 
 import net.minecraft.data.PackOutput;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.data.AdvancementProvider;
-import net.neoforged.neoforge.data.event.GatherDataEvent;
+import net.minecraftforge.common.data.ForgeAdvancementProvider;
+import net.minecraftforge.data.event.GatherDataEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import ru.samogon.SamogonMod;
 
 import java.util.List;
@@ -15,13 +15,13 @@ import java.util.List;
  * hand-written recipes, loot tables and blockstates remain the source of truth
  * they have always been. Adding another provider here is one line.
  */
-@EventBusSubscriber(modid = SamogonMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
+@Mod.EventBusSubscriber(modid = SamogonMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class SamogonDataGen {
     @SubscribeEvent
     public static void gatherData(GatherDataEvent event) {
         if (!event.includeServer()) return;
         PackOutput output = event.getGenerator().getPackOutput();
-        event.addProvider(new AdvancementProvider(output, event.getLookupProvider(),
+        event.getGenerator().addProvider(true, new ForgeAdvancementProvider(output, event.getLookupProvider(),
                 event.getExistingFileHelper(), List.of(new SamogonAdvancements())));
     }
 

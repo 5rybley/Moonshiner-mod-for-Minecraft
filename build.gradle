@@ -1,6 +1,6 @@
 plugins {
     id 'java-library'
-    id 'net.neoforged.moddev' version '2.0.91'
+    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
 }
 
 version = mod_version
@@ -13,29 +13,50 @@ base { archivesName = modArchiveName }
 tasks.named('jar') { archiveVersion = mod_version.replace(' ', '-') }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-repositories { mavenLocal() }
+minecraft {
+    // Official field/method names straight from Mojang's mapping files.
+    mappings channel: mapping_channel, version: mapping_version
 
-neoForge {
-    version = project.neo_version
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.parchment_minecraft_version
-    }
+    // Official mappings are used at runtime, so ForgeGradle does not need to
+    // reobfuscate the jar.
+    reobf = false
+
+    // Run processResources before launching the game from the IDE.
+    copyIdeResources = true
+
     runs {
-        client { client() }
-        server { server(); programArgument '--nogui' }
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+        }
+        client {
+            property 'forge.enabledGameTestNamespaces', mod_id
+        }
+        server {
+            property 'forge.enabledGameTestNamespaces', mod_id
+            args '--nogui'
+        }
+        gameTestServer {
+            property 'forge.enabledGameTestNamespaces', mod_id
+        }
         data {
-            data()
-            programArguments.addAll '--mod', mod_id, '--all',
+            workingDirectory project.file('run-data')
+            args '--mod', mod_id, '--all',
                     '--output', file('src/generated/resources').absolutePath,
                     '--existing', file('src/main/resources').absolutePath
         }
-        gameTestServer {
-            type = 'gameTestServer'
-            systemProperty 'neoforge.enabledGameTestNamespaces', 'samogon'
-        }
     }
-    mods { samogon { sourceSet(sourceSets.main) } }
+}
+
+repositories {
+    // Put repositories for dependencies here.
+    // ForgeGradle automatically adds the Forge maven and Maven Central for you.
+    // Keeping a (possibly empty) block matches the official MDK.
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 }
 
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
@@ -50,18 +71,49 @@ sourceSets.main.resources {
     exclude '.cache/**'
 }
 
-var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
-    def props = ['minecraft_version_range', 'neo_version_range', 'loader_version_range',
-                 'mod_id', 'mod_name', 'mod_license', 'mod_version', 'mod_authors', 'mod_description']
-            .collectEntries { [(it): project.property(it)] }
-    inputs.properties props
-    expand props
-    from 'src/main/templates'
-    into 'build/generated/modMetadata'
-    filteringCharset = 'UTF-8'
+// Expand the mod metadata placeholders with the values from gradle.properties.
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            forge_version          : forge_version,
+            forge_version_range    : forge_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/mods.toml']) {
+        expand replaceProperties + [project: project]
+    }
 }
-sourceSets.main.resources.srcDir generateModMetadata
-neoForge.ideSyncTask generateModMetadata
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'Specification-Title'   : mod_id,
+                'Specification-Vendor'  : mod_authors,
+                'Specification-Version' : '1',
+                'Implementation-Title'  : project.name,
+                'Implementation-Version': project.jar.archiveVersion,
+                'Implementation-Vendor' : mod_authors,
+        ])
+    }
+}
+
+// Merge each source set's resources into the same directory as its classes.
+// ForgeGradle expects this so the dev-time module scan sees "mods.toml" and the
+// mod's classes side by side (the MDK ships the same block).
+sourceSets.each {
+    def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
+    it.output.resourcesDir = dir
+    it.java.destinationDirectory = dir
+}
 
 tasks.register('verifySimulation', JavaExec) {
     dependsOn testClasses

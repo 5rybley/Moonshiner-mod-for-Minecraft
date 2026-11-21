@@ -1,14 +1,14 @@
 package ru.samogon.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import ru.samogon.SamogonMod;
 
 /**
@@ -16,7 +16,7 @@ import ru.samogon.SamogonMod;
  * then it fades back in. Purely cosmetic; the server owns the timing and the
  * teleport that happens while the screen is dark.
  */
-@EventBusSubscriber(modid = SamogonMod.MOD_ID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = SamogonMod.MOD_ID, value = Dist.CLIENT)
 public final class BlackoutOverlay {
     /** Almost fully opaque, so the world is gone but the fade still reads as a fade. */
     private static final int PEAK_ALPHA = 238;
@@ -44,14 +44,17 @@ public final class BlackoutOverlay {
     }
 
     @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
+    public static void onClientTick(TickEvent.ClientTickEvent.Post event) {
         if (active && ++elapsed >= totalTicks()) {
             active = false;
         }
     }
 
-    @SubscribeEvent
-    public static void onRenderGui(RenderGuiEvent.Post event) {
+    /**
+     * Draws the black veil as a GUI layer on the top of the post-sleep stack,
+     * so it covers the whole HUD while it is up.
+     */
+    public static void render(GuiGraphics graphics, DeltaTracker delta) {
         if (!active) {
             return;
         }
@@ -60,7 +63,6 @@ public final class BlackoutOverlay {
             return;
         }
 
-        GuiGraphics graphics = event.getGuiGraphics();
         int width = graphics.guiWidth();
         int height = graphics.guiHeight();
         graphics.fill(0, 0, width, height, alpha << 24);

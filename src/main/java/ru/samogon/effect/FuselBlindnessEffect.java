@@ -6,9 +6,10 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
-import net.neoforged.neoforge.common.EffectCure;
+import net.minecraft.world.item.ItemStack;
 
-import java.util.Set;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * The fog left by a glass of heads or tails. It is not an ordinary potion:
@@ -31,12 +32,14 @@ public final class FuselBlindnessEffect extends MobEffect {
     }
 
     /**
-     * No cure is registered at all, so {@code /effect}-free cures such as a
-     * bucket of milk or a bottle of honey cannot wash the fog away.
+     * No cure items at all, so cures such as a bucket of milk or a bottle of
+     * honey cannot wash the fog away. Forge consults this list when a
+     * {@code MobEffectInstance} is created.
      */
     @Override
-    public void fillEffectCures(Set<EffectCure> cures, MobEffectInstance instance) {
+    public List<ItemStack> getCurativeItems() {
         // Intentionally empty: this effect is only lifted by time or by death.
+        return Collections.emptyList();
     }
 
     @Override

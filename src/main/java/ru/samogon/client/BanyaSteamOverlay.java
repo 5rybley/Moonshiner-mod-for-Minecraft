@@ -1,14 +1,14 @@
 package ru.samogon.client;
 
 import net.minecraft.Util;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.Mth;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import ru.samogon.SamogonMod;
 import ru.samogon.network.BanyaSteamPayload;
 
@@ -19,7 +19,7 @@ import ru.samogon.network.BanyaSteamPayload;
  * screen in over a few seconds, then clears on its own when the packets stop,
  * so leaving the room or closing the stove never leaves the screen fogged.
  */
-@EventBusSubscriber(modid = SamogonMod.MOD_ID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = SamogonMod.MOD_ID, value = Dist.CLIENT)
 public final class BanyaSteamOverlay {
     /** Below this temperature the room is only damp air. */
     private static final float STEAM_START = 38.0F;
@@ -65,7 +65,7 @@ public final class BanyaSteamOverlay {
     }
 
     @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
+    public static void onClientTick(TickEvent.ClientTickEvent.Post event) {
         boolean fresh = Util.getMillis() - lastUpdateMillis <= STALE_MILLIS;
         if (!fresh) {
             targetTenths = 0;
@@ -89,8 +89,11 @@ public final class BanyaSteamOverlay {
         }
     }
 
-    @SubscribeEvent
-    public static void onRenderGui(RenderGuiEvent.Pre event) {
+    /**
+     * Draws the steam veil as a GUI layer below the camera overlay, so the
+     * crosshair and the rest of the HUD stay crisp above the fog.
+     */
+    public static void render(GuiGraphics graphics, DeltaTracker delta) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null
                 || minecraft.screen != null || minecraft.options.hideGui) {
@@ -106,7 +109,6 @@ public final class BanyaSteamOverlay {
             return;
         }
 
-        GuiGraphics graphics = event.getGuiGraphics();
         int width = graphics.guiWidth();
         int height = graphics.guiHeight();
         graphics.fillGradient(0, 0, width, height,
